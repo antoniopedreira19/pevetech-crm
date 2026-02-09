@@ -38,11 +38,6 @@ const Index = () => {
             <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Serviços</a>
             <a href="#cases" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cases</a>
             <a href="#contato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
-            <Link to="/login">
-              <Button variant="outline" size="sm" className="border-neon-dim text-neon hover:bg-neon/10">
-                Admin
-              </Button>
-            </Link>
           </div>
         </div>
       </nav>
