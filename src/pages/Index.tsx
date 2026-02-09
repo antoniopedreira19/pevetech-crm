@@ -30,7 +30,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 glass">
-        <div className="container mx-auto flex items-center justify-between py-4 px-6">
+        <div className="container mx-auto flex items-center justify-between py-2 px-6">
           <Link to="/" className="flex items-center gap-2">
             <img src={pevetechLogo} alt="Pevetech" className="h-20" />
           </Link>
