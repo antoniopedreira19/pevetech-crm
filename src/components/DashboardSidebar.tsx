@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Briefcase, CheckSquare, LogOut, Terminal } from "lucide-react";
+import { LayoutDashboard, Users, Briefcase, CheckSquare, LogOut } from "lucide-react";
+import pevetechLogo from "@/assets/pevetech-logo.png";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -21,8 +22,7 @@ const DashboardSidebar = () => {
   return (
     <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       <div className="p-6 flex items-center gap-2">
-        <Terminal className="text-neon" size={22} />
-        <span className="font-display text-lg font-bold text-foreground">PEVETECH</span>
+        <img src={pevetechLogo} alt="Pevetech" className="h-8" />
       </div>
       <nav className="flex-1 px-3 space-y-1">
         {links.map((link) => (

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Code, Server, Shield, Zap, Users, TrendingUp, ArrowRight, Terminal } from "lucide-react";
+import { Code, Server, Shield, Zap, Users, TrendingUp, ArrowRight } from "lucide-react";
+import pevetechLogo from "@/assets/pevetech-logo.png";
 import { Button } from "@/components/ui/button";
 import ContactForm from "@/components/ContactForm";
 
@@ -31,8 +32,7 @@ const Index = () => {
       <nav className="fixed top-0 w-full z-50 glass">
         <div className="container mx-auto flex items-center justify-between py-4 px-6">
           <Link to="/" className="flex items-center gap-2">
-            <Terminal className="text-neon" size={24} />
-            <span className="font-display text-lg font-bold text-foreground">PEVETECH</span>
+            <img src={pevetechLogo} alt="Pevetech" className="h-8" />
           </Link>
           <div className="flex items-center gap-4">
             <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Serviços</a>
@@ -156,8 +156,7 @@ const Index = () => {
       <footer className="py-8 border-t border-border">
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Terminal className="text-neon" size={18} />
-            <span className="font-display text-sm text-muted-foreground">PEVETECH</span>
+            <img src={pevetechLogo} alt="Pevetech" className="h-6" />
           </div>
           <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Pevetech. Todos os direitos reservados.</p>
         </div>
