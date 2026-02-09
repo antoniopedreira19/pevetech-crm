@@ -22,7 +22,7 @@ const DashboardSidebar = () => {
   return (
     <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
       <div className="p-6 flex items-center gap-2">
-        <img src={pevetechLogo} alt="Pevetech" className="h-8" />
+        <img src={pevetechLogo} alt="Pevetech" className="h-14" />
       </div>
       <nav className="flex-1 px-3 space-y-1">
         {links.map((link) => (

@@ -32,7 +32,7 @@ const Index = () => {
       <nav className="fixed top-0 w-full z-50 glass">
         <div className="container mx-auto flex items-center justify-between py-4 px-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src={pevetechLogo} alt="Pevetech" className="h-14" />
+            <img src={pevetechLogo} alt="Pevetech" className="h-20" />
           </Link>
           <div className="flex items-center gap-4">
             <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Serviços</a>
@@ -156,7 +156,7 @@ const Index = () => {
       <footer className="py-8 border-t border-border">
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={pevetechLogo} alt="Pevetech" className="h-10" />
+            <img src={pevetechLogo} alt="Pevetech" className="h-14" />
           </div>
           <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Pevetech. Todos os direitos reservados.</p>
         </div>
