@@ -2,6 +2,11 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Code, Server, Shield, Zap, Users, TrendingUp, ArrowRight } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
+import grifoLogo from "@/assets/clients/grifo.jpg";
+import californiaLogo from "@/assets/clients/california.jpg";
+import vvBeneficiosLogo from "@/assets/clients/vv-beneficios.png";
+import mtwelveLogo from "@/assets/clients/mtwelve.png";
+import senseSportsLogo from "@/assets/clients/sense-sports.jpg";
 import { Button } from "@/components/ui/button";
 import ContactForm from "@/components/ContactForm";
 
@@ -87,13 +92,19 @@ const Index = () => {
             <p className="text-[11px] font-display uppercase tracking-[0.2em] text-muted-foreground mb-8">
               Tecnologia por trás de:
             </p>
-            <div className="flex items-center justify-center gap-10 md:gap-16">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="flex items-center justify-center gap-8 md:gap-14 flex-wrap">
+              {[
+                { src: grifoLogo, alt: "Grifo Engenharia" },
+                { src: californiaLogo, alt: "California" },
+                { src: vvBeneficiosLogo, alt: "VV Benefícios" },
+                { src: mtwelveLogo, alt: "MTwelve" },
+                { src: senseSportsLogo, alt: "Sense Sports" },
+              ].map((client) => (
                 <div
-                  key={i}
-                  className="w-24 h-10 md:w-32 md:h-12 rounded border border-border/50 bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 hover:border-neon-dim hover:text-neon transition-all duration-300 cursor-default"
+                  key={client.alt}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-lg bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 transition-all duration-300 cursor-default overflow-hidden"
                 >
-                  <span className="text-xs font-display text-muted-foreground">Logo {i}</span>
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-contain p-2" />
                 </div>
               ))}
             </div>
