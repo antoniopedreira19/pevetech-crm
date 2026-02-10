@@ -104,7 +104,7 @@ const Index = () => {
                   key={client.alt}
                   className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 transition-all duration-300 cursor-default overflow-hidden"
                 >
-                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-contain p-1.5" />
                 </div>
               ))}
             </div>
