@@ -1,18 +1,21 @@
 
+## Corrigir logos cortados na seção de prova social
 
-## Aumentar o tamanho da logo
+O problema é que `object-cover` recorta as imagens para preencher o circulo, cortando logos que não são quadradas (como VV Benefícios e MTwelve).
 
-Vou aumentar as classes de altura da logo nos três locais:
+### Solução
 
-| Local | Atual | Novo |
-|-------|-------|------|
-| Navbar (landing page) | `h-14` (56px) | `h-20` (80px) |
-| Footer (landing page) | `h-10` (40px) | `h-14` (56px) |
-| Sidebar (dashboard) | `h-8` (32px) | `h-14` (56px) |
+Trocar `object-cover` por `object-contain` e adicionar um pequeno padding interno para que a imagem inteira caiba dentro do círculo sem ser cortada.
 
-### Arquivos alterados
-- `src/pages/Index.tsx` — navbar e footer
-- `src/components/DashboardSidebar.tsx` — sidebar
+### Alteração em `src/pages/Index.tsx`
 
-Se ainda ficar pequeno depois, é só ajustar o valor novamente.
+Na linha da tag `<img>`, mudar de:
+```
+className="w-full h-full object-cover"
+```
+para:
+```
+className="w-full h-full object-contain p-1.5"
+```
 
+Isso garante que todas as logos fiquem completamente visíveis dentro do círculo, independentemente da proporção original da imagem.
