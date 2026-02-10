@@ -102,9 +102,9 @@ const Index = () => {
               ].map((client) => (
                 <div
                   key={client.alt}
-                  className="w-20 h-20 md:w-24 md:h-24 rounded-lg bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 transition-all duration-300 cursor-default overflow-hidden"
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 transition-all duration-300 cursor-default overflow-hidden"
                 >
-                  <img src={client.src} alt={client.alt} className="w-full h-full object-contain p-2" />
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
