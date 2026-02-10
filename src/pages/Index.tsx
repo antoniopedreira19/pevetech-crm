@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Code, Server, Shield, Zap, Users, TrendingUp, ArrowRight } from "lucide-react";
+import { Workflow, Bot, BarChart3, Compass, ArrowRight } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
 import grifoLogo from "@/assets/clients/grifo.jpg";
 import californiaLogo from "@/assets/clients/california.jpg";
@@ -10,13 +10,11 @@ import senseSportsLogo from "@/assets/clients/sense-sports.jpg";
 import { Button } from "@/components/ui/button";
 import ContactForm from "@/components/ContactForm";
 
-const services = [
-  { icon: Code, title: "Arquitetura de Software", desc: "Design de sistemas escaláveis e resilientes para seu negócio." },
-  { icon: Server, title: "DevOps & Cloud", desc: "Infraestrutura como código, CI/CD e automação completa." },
-  { icon: Shield, title: "Segurança", desc: "Auditoria, compliance e implementação de boas práticas de segurança." },
-  { icon: Users, title: "Liderança Técnica", desc: "Gestão de times de engenharia e mentoria para devs." },
-  { icon: TrendingUp, title: "Estratégia Tech", desc: "Roadmap tecnológico alinhado aos objetivos do negócio." },
-  { icon: Zap, title: "Otimização", desc: "Performance, redução de custos e eficiência operacional." },
+const pillars = [
+  { icon: Workflow, title: "Automação (n8n)", desc: "Elimine o trabalho manual repetitivo. Conectamos suas ferramentas para criar fluxos de trabalho que rodam sozinhos." },
+  { icon: Bot, title: "Inteligência (IA)", desc: "Implementação de Agentes Autônomos e LLMs que entendem o contexto do seu negócio para vender e atender." },
+  { icon: BarChart3, title: "Visão (Dashboards)", desc: "Transforme dados dispersos em decisão. Painéis de Business Intelligence integrados ao seu banco de dados." },
+  { icon: Compass, title: "Estratégia (CTO)", desc: "Governança, escolha de stack e arquitetura de sistemas. A liderança técnica necessária para escalar." },
 ];
 
 const cases = [
@@ -119,16 +117,16 @@ const Index = () => {
             className="text-3xl md:text-4xl font-bold text-center mb-4"
             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}
           >
-            O que <span className="text-neon">entregamos</span>
+            Pilares da <span className="text-neon">Transformação</span>
           </motion.h2>
           <motion.p
             className="text-muted-foreground text-center mb-16 max-w-xl mx-auto"
             initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={1}
           >
-            Cobertura completa para sua operação de tecnologia
+            A base tecnológica que sua empresa precisa para crescer.
           </motion.p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((s, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {pillars.map((s, i) => (
               <motion.div
                 key={s.title}
                 className="p-6 rounded-lg bg-card border border-border hover:border-neon-dim transition-colors group"
