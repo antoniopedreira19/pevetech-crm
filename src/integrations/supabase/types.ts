@@ -55,6 +55,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          ai_diagnostic: string | null
           company: string | null
           created_at: string | null
           email: string | null
@@ -66,6 +67,7 @@ export type Database = {
           status: Database["public"]["Enums"]["lead_status"] | null
         }
         Insert: {
+          ai_diagnostic?: string | null
           company?: string | null
           created_at?: string | null
           email?: string | null
@@ -77,6 +79,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["lead_status"] | null
         }
         Update: {
+          ai_diagnostic?: string | null
           company?: string | null
           created_at?: string | null
           email?: string | null
