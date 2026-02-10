@@ -44,7 +44,9 @@ const Index = () => {
 
       {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_hsl(120_100%_15%_/_0.15)_0%,_transparent_70%)]" />
+        {/* Aurora glow from bottom center */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,_hsl(120_100%_50%_/_0.12)_0%,_hsl(120_100%_30%_/_0.05)_40%,_transparent_70%)]" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse_at_center,_hsl(120_100%_50%_/_0.08)_0%,_transparent_70%)] blur-3xl" />
         <div className="container mx-auto px-6 text-center relative z-10">
           <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={0}>
             <span className="inline-block px-4 py-1.5 rounded-full border border-neon-dim text-neon text-xs font-display mb-6 tracking-wider">
@@ -55,21 +57,46 @@ const Index = () => {
             className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight"
             initial="hidden" animate="visible" variants={fadeUp} custom={1}
           >
-            Liderança técnica<br />
-            <span className="text-neon glow-neon-text">sob demanda.</span>
+            Pare de Operar.<br />
+            <span className="text-neon glow-neon-text">
+              Comece a Escalar.
+              <span className="inline-block w-[3px] h-[0.85em] bg-neon ml-1 align-baseline animate-pulse-neon" />
+            </span>
           </motion.h1>
           <motion.p
             className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
             initial="hidden" animate="visible" variants={fadeUp} custom={2}
           >
-            Estratégia, arquitetura e gestão de engenharia para empresas que precisam escalar sem contratar um C-Level full-time.
+            Transforme rotinas manuais em automação inteligente. A estratégia de um CTO experiente para organizar sua casa e liberar seu tempo.
           </motion.p>
-          <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={3}>
+          <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-4" initial="hidden" animate="visible" variants={fadeUp} custom={3}>
             <a href="#contato">
               <Button size="lg" className="gradient-neon text-accent-foreground font-semibold text-base px-8 hover:opacity-90">
-                Fale com a gente <ArrowRight className="ml-2" size={18} />
+                Agendar Diagnóstico <ArrowRight className="ml-2" size={18} />
               </Button>
             </a>
+            <a href="#cases">
+              <Button size="lg" variant="outline" className="border-neon-dim text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors">
+                Ver Cases de Sucesso
+              </Button>
+            </a>
+          </motion.div>
+
+          {/* Social Proof */}
+          <motion.div className="mt-20" initial="hidden" animate="visible" variants={fadeUp} custom={4}>
+            <p className="text-[11px] font-display uppercase tracking-[0.2em] text-muted-foreground mb-8">
+              Tecnologia por trás de:
+            </p>
+            <div className="flex items-center justify-center gap-10 md:gap-16">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="w-24 h-10 md:w-32 md:h-12 rounded border border-border/50 bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 hover:border-neon-dim hover:text-neon transition-all duration-300 cursor-default"
+                >
+                  <span className="text-xs font-display text-muted-foreground">Logo {i}</span>
+                </div>
+              ))}
+            </div>
           </motion.div>
         </div>
       </section>
