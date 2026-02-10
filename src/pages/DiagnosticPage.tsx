@@ -10,7 +10,7 @@ const DiagnosticPage = () => {
 
       {/* Header - Logo only */}
       <header className="py-6 flex justify-center relative z-10">
-        <img src={pevetechLogo} alt="Pevetech" className="h-8 opacity-80" />
+        <img src={pevetechLogo} alt="Pevetech" className="h-16 md:h-20 opacity-90" />
       </header>
 
       {/* Main Content */}
