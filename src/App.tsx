@@ -10,6 +10,7 @@ import DashboardOverview from "./pages/DashboardOverview";
 import CRMKanban from "./pages/CRMKanban";
 import ClientsPage from "./pages/ClientsPage";
 import TasksPage from "./pages/TasksPage";
+import DiagnosticPage from "./pages/DiagnosticPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/diagnostico" element={<DiagnosticPage />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="crm" element={<CRMKanban />} />

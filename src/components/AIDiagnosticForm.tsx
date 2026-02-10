@@ -141,7 +141,7 @@ const AIDiagnosticForm = () => {
   };
 
   const inputClass =
-    "w-full bg-transparent border-b border-muted-foreground/30 focus:border-neon px-0 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors";
+    "w-full bg-transparent border-b border-muted-foreground/30 focus:border-neon px-0 py-3 text-base text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors";
 
   return (
     <motion.div
