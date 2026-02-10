@@ -11,10 +11,26 @@ import { Button } from "@/components/ui/button";
 import ContactForm from "@/components/ContactForm";
 
 const pillars = [
-  { icon: Workflow, title: "Automação (n8n)", desc: "Elimine o trabalho manual repetitivo. Conectamos suas ferramentas para criar fluxos de trabalho que rodam sozinhos." },
-  { icon: Bot, title: "Inteligência (IA)", desc: "Implementação de Agentes Autônomos e LLMs que entendem o contexto do seu negócio para vender e atender." },
-  { icon: BarChart3, title: "Visão (Dashboards)", desc: "Transforme dados dispersos em decisão. Painéis de Business Intelligence integrados ao seu banco de dados." },
-  { icon: Compass, title: "Estratégia (CTO)", desc: "Governança, escolha de stack e arquitetura de sistemas. A liderança técnica necessária para escalar." },
+  {
+    icon: Workflow,
+    title: "Automação (Workflow)",
+    desc: "Elimine o trabalho manual repetitivo. Conectamos suas ferramentas para criar fluxos de trabalho que rodam sozinhos.",
+  },
+  {
+    icon: Bot,
+    title: "Inteligência (IA)",
+    desc: "Implementação de Agentes Autônomos e LLMs que entendem o contexto do seu negócio para vender e atender.",
+  },
+  {
+    icon: BarChart3,
+    title: "Visão (Dashboards)",
+    desc: "Transforme dados dispersos em decisão. Painéis de Business Intelligence integrados ao seu banco de dados.",
+  },
+  {
+    icon: Compass,
+    title: "Estratégia (CTO)",
+    desc: "Governança, escolha de stack e arquitetura de sistemas. A liderança técnica necessária para escalar.",
+  },
 ];
 
 const cases = [
@@ -38,9 +54,15 @@ const Index = () => {
             <img src={pevetechLogo} alt="Pevetech" className="h-20" />
           </Link>
           <div className="flex items-center gap-4">
-            <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Serviços</a>
-            <a href="#cases" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Cases</a>
-            <a href="#contato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contato</a>
+            <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Serviços
+            </a>
+            <a href="#cases" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Cases
+            </a>
+            <a href="#contato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Contato
+            </a>
           </div>
         </div>
       </nav>
@@ -58,9 +80,13 @@ const Index = () => {
           </motion.div>
           <motion.h1
             className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight"
-            initial="hidden" animate="visible" variants={fadeUp} custom={1}
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            custom={1}
           >
-            Pare de Operar.<br />
+            Pare de Operar.
+            <br />
             <span className="text-neon glow-neon-text">
               Comece a Escalar.
               <span className="inline-block w-[3px] h-[0.85em] bg-neon ml-1 align-baseline animate-pulse-neon" />
@@ -68,18 +94,35 @@ const Index = () => {
           </motion.h1>
           <motion.p
             className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-            initial="hidden" animate="visible" variants={fadeUp} custom={2}
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            custom={2}
           >
-            Transforme rotinas manuais em automação inteligente. A estratégia de um CTO experiente para organizar sua casa e liberar seu tempo.
+            Transforme rotinas manuais em automação inteligente. A estratégia de um CTO experiente para organizar sua
+            casa e liberar seu tempo.
           </motion.p>
-          <motion.div className="flex flex-col sm:flex-row items-center justify-center gap-4" initial="hidden" animate="visible" variants={fadeUp} custom={3}>
+          <motion.div
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            custom={3}
+          >
             <a href="#contato">
-              <Button size="lg" className="gradient-neon text-accent-foreground font-semibold text-base px-8 hover:opacity-90">
+              <Button
+                size="lg"
+                className="gradient-neon text-accent-foreground font-semibold text-base px-8 hover:opacity-90"
+              >
                 Agendar Diagnóstico <ArrowRight className="ml-2" size={18} />
               </Button>
             </a>
             <a href="#cases">
-              <Button size="lg" variant="outline" className="border-neon-dim text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-neon-dim text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors"
+              >
                 Ver Cases de Sucesso
               </Button>
             </a>
@@ -115,13 +158,21 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-4"
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={0}
           >
             Pilares da <span className="text-neon">Transformação</span>
           </motion.h2>
           <motion.p
             className="text-muted-foreground text-center mb-16 max-w-xl mx-auto"
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={1}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={1}
           >
             A base tecnológica que sua empresa precisa para crescer.
           </motion.p>
@@ -130,9 +181,16 @@ const Index = () => {
               <motion.div
                 key={s.title}
                 className="p-6 rounded-lg bg-card border border-border hover:border-neon-dim transition-colors group"
-                initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={fadeUp}
+                custom={i}
               >
-                <s.icon className="text-neon mb-4 group-hover:drop-shadow-[0_0_8px_hsl(120,100%,50%,0.5)] transition-all" size={28} />
+                <s.icon
+                  className="text-neon mb-4 group-hover:drop-shadow-[0_0_8px_hsl(120,100%,50%,0.5)] transition-all"
+                  size={28}
+                />
                 <h3 className="font-display text-lg font-semibold mb-2 text-foreground">{s.title}</h3>
                 <p className="text-sm text-muted-foreground">{s.desc}</p>
               </motion.div>
@@ -146,7 +204,11 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-16"
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={0}
           >
             Cases de <span className="text-neon">Sucesso</span>
           </motion.h2>
@@ -155,7 +217,11 @@ const Index = () => {
               <motion.div
                 key={c.company}
                 className="p-6 rounded-lg border border-border bg-background relative overflow-hidden"
-                initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={i}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={fadeUp}
+                custom={i}
               >
                 <div className="absolute top-0 left-0 w-full h-0.5 gradient-neon" />
                 <span className="text-xs font-display text-neon mb-2 block">{c.area}</span>
@@ -172,13 +238,21 @@ const Index = () => {
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-4"
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={0}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={0}
           >
             Vamos <span className="text-neon">conversar?</span>
           </motion.h2>
           <motion.p
             className="text-muted-foreground text-center mb-12 max-w-md mx-auto"
-            initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={1}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={fadeUp}
+            custom={1}
           >
             Conte sobre seu desafio e entraremos em contato
           </motion.p>
@@ -194,7 +268,9 @@ const Index = () => {
           <div className="flex items-center gap-2">
             <img src={pevetechLogo} alt="Pevetech" className="h-14" />
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Pevetech. Todos os direitos reservados.</p>
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Pevetech. Todos os direitos reservados.
+          </p>
         </div>
       </footer>
     </div>
