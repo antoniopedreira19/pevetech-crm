@@ -4,6 +4,7 @@ import { Bot, Sparkles, ArrowRight, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const WEBHOOK_URL = "PLACEHOLDER";
 
@@ -132,8 +133,18 @@ const AIDiagnosticForm = () => {
     }
     setPhase("loading");
 
-    // Future: send to webhook
-    // try { await fetch(WEBHOOK_URL, { method: "POST", body: JSON.stringify(result.data) }); } catch {}
+    try {
+      const { error } = await supabase.from("leads").insert({
+        name: form.name,
+        email: form.email,
+        phone: form.whatsapp,
+        company: form.company,
+        message: form.challenge,
+      });
+      if (error) console.error("Error saving lead:", error);
+    } catch (err) {
+      console.error("Error saving lead:", err);
+    }
   };
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
