@@ -8,7 +8,7 @@ import vvBeneficiosLogo from "@/assets/clients/vv-beneficios.png";
 import mtwelveLogo from "@/assets/clients/mtwelve.png";
 import senseSportsLogo from "@/assets/clients/sense-sports.jpg";
 import { Button } from "@/components/ui/button";
-import ContactForm from "@/components/ContactForm";
+import AIDiagnosticForm from "@/components/AIDiagnosticForm";
 
 const pillars = [
   {
@@ -244,7 +244,7 @@ const Index = () => {
             variants={fadeUp}
             custom={0}
           >
-            Vamos <span className="text-neon">conversar?</span>
+            Diagnóstico de <span className="text-neon">Inteligência Operacional</span>
           </motion.h2>
           <motion.p
             className="text-muted-foreground text-center mb-12 max-w-md mx-auto"
@@ -254,10 +254,10 @@ const Index = () => {
             variants={fadeUp}
             custom={1}
           >
-            Conte sobre seu desafio e entraremos em contato
+            Pare de adivinhar onde está o problema. Nossa IA analisa seu relato e desenha a solução técnica imediata.
           </motion.p>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={2}>
-            <ContactForm />
+            <AIDiagnosticForm />
           </motion.div>
         </div>
       </section>
