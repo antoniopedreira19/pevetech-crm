@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   Search,
   MoreHorizontal,
@@ -41,6 +42,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+
 
 // --- Types ---
 type Client = Tables<"clients">;
@@ -558,18 +560,35 @@ const ClientsPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-purple-500/5 pointer-events-none" />
 
         <div className="relative overflow-auto h-full">
-          <table className="w-full caption-bottom text-sm">
+          <table className="w-full table-fixed caption-bottom text-sm">
+            <colgroup>
+              <col className="w-[34%]" />
+              <col className="w-[14%]" />
+              <col className="w-[28%]" />
+              <col className="w-[16%]" />
+              <col className="w-[8%]" />
+            </colgroup>
             <thead className="sticky top-0 bg-card/90 backdrop-blur z-10 border-b border-border/50">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id} className="hover:bg-transparent">
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="h-11 px-4 text-left align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]"
-                    >
-                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
+                  {headerGroup.headers.map((header) => {
+                    const colId = header.column.id;
+                    const align =
+                      colId === "status" ? "text-center" : colId === "monthly_value" || colId === "actions" ? "text-right" : "text-left";
+
+                    return (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={cn(
+                          "h-11 px-4 align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]",
+                          align,
+                        )}
+                      >
+                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                      </th>
+                    );
+                  })}
                 </tr>
               ))}
             </thead>
@@ -580,11 +599,21 @@ const ClientsPage = () => {
                     key={row.id}
                     className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-neon before:opacity-0 group-hover:before:opacity-100 before:transition-opacity"
                   >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="p-4 align-middle text-left">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                      const colId = cell.column.id;
+                      const align =
+                        colId === "status"
+                          ? "text-center"
+                          : colId === "monthly_value" || colId === "actions"
+                            ? "text-right"
+                            : "text-left";
+
+                      return (
+                        <td key={cell.id} className={cn("px-4 py-3 align-middle", align)}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               ) : (
