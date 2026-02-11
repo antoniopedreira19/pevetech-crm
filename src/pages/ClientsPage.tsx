@@ -578,9 +578,8 @@ const ClientsPage = () => {
                 table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative"
+                    className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-neon before:opacity-0 group-hover:before:opacity-100 before:transition-opacity"
                   >
-                    <td className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity"></td>
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="p-4 align-middle text-left">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
