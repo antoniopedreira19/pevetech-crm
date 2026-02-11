@@ -26,6 +26,7 @@ type Lead = Tables<"leads">;
 type Task = Tables<"tasks">;
 type MrrHistory = Tables<"client_mrr_history">;
 
+// --- Helper Functions ---
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
@@ -34,6 +35,7 @@ const getLast6Months = () => {
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
+    // Definimos para o primeiro dia do mês para facilitar cálculos
     months.push(new Date(d.getFullYear(), d.getMonth(), 1));
   }
   return months;
@@ -48,6 +50,8 @@ const getInitials = (name: string | null) => {
     .join("")
     .toUpperCase();
 };
+
+// --- Sub-components ---
 
 const KPICard = ({
   title,
@@ -72,11 +76,6 @@ const KPICard = ({
         <div className="p-2.5 rounded-xl bg-background/50 border border-border/50 text-neon shadow-sm">
           <Icon size={20} />
         </div>
-        {trend && (
-          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 gap-1">
-            <TrendingUp size={12} /> {trend}
-          </Badge>
-        )}
       </div>
       <div className="space-y-1">
         <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
@@ -171,7 +170,10 @@ const DashboardOverview = () => {
         const [c, l, h] = await Promise.all([
           supabase.from("clients").select("*"),
           supabase.from("leads").select("*"),
-          supabase.from("client_mrr_history").select("*").order("effective_date", { ascending: true }),
+          supabase
+            .from("client_mrr_history" as any)
+            .select("*")
+            .order("effective_date", { ascending: true }),
         ]);
         if (c.data) setClients(c.data);
         if (l.data) setLeads(l.data);
@@ -200,23 +202,28 @@ const DashboardOverview = () => {
     return months.map((monthDate) => {
       const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
 
-      // Filtra apenas clientes que já tinham começado até o fim deste mês
-      const clientsStarted = clients.filter((c) => c.start_date && new Date(c.start_date) <= endOfMonth);
+      const clientsStarted = clients.filter((c) => {
+        if (!c.start_date) return false;
+
+        // CORREÇÃO DE TIMEZONE:
+        // Quebramos a string "YYYY-MM-DD" e criamos a data localmente
+        // Isso evita que o JS retroceda a data para o dia anterior devido ao UTC
+        const [year, month, day] = c.start_date.split("-").map(Number);
+        const startDateAbsolute = new Date(year, month - 1, day, 0, 0, 0);
+
+        return startDateAbsolute <= endOfMonth;
+      });
 
       let totalMrrForMonth = 0;
 
       clientsStarted.forEach((client) => {
-        // Busca o histórico desse cliente até o fim do mês em questão
         const historyForClient = mrrHistory.filter(
           (h) => h.client_id === client.id && new Date(h.effective_date) <= endOfMonth,
         );
 
         if (historyForClient.length > 0) {
-          // Pega o valor mais recente do histórico
           totalMrrForMonth += Number(historyForClient[historyForClient.length - 1].new_value) || 0;
         } else {
-          // Se não houver histórico mas o cliente já começou, assume o monthly_value atual dele (fallback)
-          // Isso evita que o gráfico fique zerado se você esqueceu de popular o histórico inicial
           totalMrrForMonth += Number(client.monthly_value) || 0;
         }
       });
@@ -330,7 +337,7 @@ const DashboardOverview = () => {
                           <p className="text-[10px] text-muted-foreground mt-1">{client.name}</p>
                         </div>
                       </div>
-                      <div className="font-bold text-sm text-neon font-mono">
+                      <div className="font-bold text-sm text-neon font-mono text-right">
                         {formatCurrency(Number(client.monthly_value) || 0)}
                       </div>
                     </div>
