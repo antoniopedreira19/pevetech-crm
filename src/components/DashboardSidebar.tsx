@@ -54,8 +54,8 @@ const DashboardSidebar = () => {
           src={isCollapsed ? pevetechIcon : pevetechLogo}
           alt="Pevetech"
           className={cn(
-            "object-contain transition-all duration-300 hover:scale-105",
-            isCollapsed ? "h-14 w-14" : "h-24 w-auto",
+            "object-contain transition-all duration-300 hover:scale-110",
+            isCollapsed ? "h-20 w-20 drop-shadow-[0_0_12px_hsl(var(--neon)/0.5)]" : "h-24 w-auto",
           )}
         />
       </div>
