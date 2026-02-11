@@ -18,15 +18,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-// Adicione as importações de Avatar se ainda não estiverem presentes
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // --- Types ---
 type Client = Tables<"clients">;
 type Lead = Tables<"leads">;
 type Task = Tables<"tasks">;
+type MrrHistory = Tables<"client_mrr_history">;
 
-// --- Helper Functions ---
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
@@ -35,12 +34,11 @@ const getLast6Months = () => {
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
-    months.push(d);
+    months.push(new Date(d.getFullYear(), d.getMonth(), 1));
   }
   return months;
 };
 
-// Funções auxiliares para o Avatar
 const getInitials = (name: string | null) => {
   if (!name) return "CL";
   return name
@@ -50,8 +48,6 @@ const getInitials = (name: string | null) => {
     .join("")
     .toUpperCase();
 };
-
-// --- Sub-components ---
 
 const KPICard = ({
   title,
@@ -163,29 +159,23 @@ const FunnelChart = ({ data }: { data: any[] }) => (
   </div>
 );
 
-// --- Main Component ---
-
 const DashboardOverview = () => {
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  const [mrrHistory, setMrrHistory] = useState<any[]>([]);
+  const [mrrHistory, setMrrHistory] = useState<MrrHistory[]>([]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, l, t, h] = await Promise.all([
+        const [c, l, h] = await Promise.all([
           supabase.from("clients").select("*"),
           supabase.from("leads").select("*"),
-          supabase.from("tasks").select("*"),
-          supabase.from("client_mrr_history" as any).select("*").order("effective_date", { ascending: true }),
+          supabase.from("client_mrr_history").select("*").order("effective_date", { ascending: true }),
         ]);
         if (c.data) setClients(c.data);
         if (l.data) setLeads(l.data);
-        if (t.data) setTasks(t.data);
-        if (h.data) setMrrHistory(h.data);
+        if (h.data) setMrrHistory(h.data as MrrHistory[]);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
       } finally {
@@ -195,46 +185,48 @@ const DashboardOverview = () => {
     load();
   }, []);
 
-  // --- Processed Data ---
-
   const metrics = useMemo(() => {
     const activeClients = clients.filter((c) => c.status === "active");
-    const mrr = activeClients.reduce((sum, c) => sum + (c.monthly_value || 0), 0);
+    const mrr = activeClients.reduce((sum, c) => sum + (Number(c.monthly_value) || 0), 0);
     const avgTicket = activeClients.length > 0 ? mrr / activeClients.length : 0;
-    const pipelineValue = leads.length * avgTicket * 0.2; // Estimativa simples de pipeline ponderado
+    const pipelineValue = leads.length * avgTicket * 0.2;
 
-    return {
-      mrr,
-      activeClients: activeClients.length,
-      avgTicket,
-      pipelineValue,
-      totalLeads: leads.length,
-    };
+    return { mrr, activeClients: activeClients.length, avgTicket, pipelineValue, totalLeads: leads.length };
   }, [clients, leads]);
 
   const chartData = useMemo(() => {
     const months = getLast6Months();
-    return months.map((date) => {
-      // Para cada mês, calcular o MRR total baseado no histórico
-      // O MRR vigente de cada cliente no final do mês é o último new_value antes daquela data
-      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-      const clientIds = [...new Set(mrrHistory.map((h: any) => h.client_id))];
-      
-      let totalMrr = 0;
-      for (const clientId of clientIds) {
-        const clientEntries = mrrHistory
-          .filter((h: any) => h.client_id === clientId && new Date(h.effective_date) <= endOfMonth);
-        if (clientEntries.length > 0) {
-          totalMrr += Number(clientEntries[clientEntries.length - 1].new_value) || 0;
+
+    return months.map((monthDate) => {
+      const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
+
+      // Filtra apenas clientes que já tinham começado até o fim deste mês
+      const clientsStarted = clients.filter((c) => c.start_date && new Date(c.start_date) <= endOfMonth);
+
+      let totalMrrForMonth = 0;
+
+      clientsStarted.forEach((client) => {
+        // Busca o histórico desse cliente até o fim do mês em questão
+        const historyForClient = mrrHistory.filter(
+          (h) => h.client_id === client.id && new Date(h.effective_date) <= endOfMonth,
+        );
+
+        if (historyForClient.length > 0) {
+          // Pega o valor mais recente do histórico
+          totalMrrForMonth += Number(historyForClient[historyForClient.length - 1].new_value) || 0;
+        } else {
+          // Se não houver histórico mas o cliente já começou, assume o monthly_value atual dele (fallback)
+          // Isso evita que o gráfico fique zerado se você esqueceu de popular o histórico inicial
+          totalMrrForMonth += Number(client.monthly_value) || 0;
         }
-      }
+      });
 
       return {
-        name: date.toLocaleDateString("pt-BR", { month: "short" }),
-        value: totalMrr,
+        name: monthDate.toLocaleDateString("pt-BR", { month: "short" }),
+        value: totalMrrForMonth,
       };
     });
-  }, [mrrHistory]);
+  }, [clients, mrrHistory]);
 
   const funnelData = useMemo(() => {
     const statusCounts = leads.reduce(
@@ -253,15 +245,16 @@ const DashboardOverview = () => {
   }, [leads]);
 
   const topClients = useMemo(() => {
-    return [...clients].sort((a, b) => (b.monthly_value || 0) - (a.monthly_value || 0)).slice(0, 5);
+    return [...clients]
+      .filter((c) => c.status === "active")
+      .sort((a, b) => (Number(b.monthly_value) || 0) - (Number(a.monthly_value) || 0))
+      .slice(0, 5);
   }, [clients]);
 
-  if (loading) {
+  if (loading)
     return (
       <div className="space-y-8 p-8">
-        <div className="flex justify-between">
-          <Skeleton className="h-10 w-48" />
-        </div>
+        <Skeleton className="h-10 w-48" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32 rounded-xl" />
@@ -270,11 +263,9 @@ const DashboardOverview = () => {
         <Skeleton className="h-[400px] rounded-xl" />
       </div>
     );
-  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
@@ -282,11 +273,10 @@ const DashboardOverview = () => {
         </div>
       </div>
 
-      {/* KPI Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard title="MRR Total" value={formatCurrency(metrics.mrr)} trend="+12.5%" icon={DollarSign} delay={0} />
-        <KPICard title="Clientes Ativos" value={String(metrics.activeClients)} trend="+2" icon={Users} delay={100} />
-        <KPICard title="Ticket Médio" value={formatCurrency(metrics.avgTicket)} trend="+5%" icon={Target} delay={200} />
+        <KPICard title="MRR Total" value={formatCurrency(metrics.mrr)} icon={DollarSign} delay={0} />
+        <KPICard title="Clientes Ativos" value={String(metrics.activeClients)} icon={Users} delay={100} />
+        <KPICard title="Ticket Médio" value={formatCurrency(metrics.avgTicket)} icon={Target} delay={200} />
         <KPICard
           title="Pipeline Ativo (Est.)"
           value={formatCurrency(metrics.pipelineValue)}
@@ -295,22 +285,18 @@ const DashboardOverview = () => {
         />
       </div>
 
-      {/* Main Content Grid */}
       <div className="grid gap-4 md:grid-cols-7 lg:grid-cols-7">
-        {/* Revenue Chart */}
         <Card className="col-span-4 bg-card/50 backdrop-blur-sm border-border/50 shadow-lg">
           <CardHeader>
             <CardTitle>Crescimento de Receita</CardTitle>
-            <CardDescription>Evolução do MRR nos últimos 6 meses</CardDescription>
+            <CardDescription>Evolução baseada em StartDate e Histórico de MRR</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <RevenueChart data={chartData} />
           </CardContent>
         </Card>
 
-        {/* Side Panel: Funnel & Top Clients */}
         <div className="col-span-3 space-y-4">
-          {/* Sales Funnel */}
           <Card className="bg-card/50 backdrop-blur-sm border-border/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Funil de Vendas</CardTitle>
@@ -320,13 +306,12 @@ const DashboardOverview = () => {
             </CardContent>
           </Card>
 
-          {/* Top Clients Table - ATUALIZADO PARA MRR E LOGO */}
           <Card className="bg-card/50 backdrop-blur-sm border-border/50 flex-1">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Top Clientes (MRR)</CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[200px] pr-4">
+              <ScrollArea className="h-[250px] pr-4">
                 <div className="space-y-4">
                   {topClients.map((client) => (
                     <div
@@ -334,7 +319,6 @@ const DashboardOverview = () => {
                       className="flex items-center justify-between border-b border-border/40 last:border-0 pb-3 last:pb-0"
                     >
                       <div className="flex items-center gap-3">
-                        {/* Avatar atualizado para usar logotipo se disponível */}
                         <Avatar className="h-8 w-8 border border-border/50">
                           <AvatarImage src={client.logo_url || undefined} alt={client.company_name || ""} />
                           <AvatarFallback className="bg-secondary text-[10px] font-bold">
@@ -343,19 +327,14 @@ const DashboardOverview = () => {
                         </Avatar>
                         <div>
                           <p className="text-sm font-medium leading-none">{client.company_name}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{client.name}</p>
+                          <p className="text-[10px] text-muted-foreground mt-1">{client.name}</p>
                         </div>
                       </div>
                       <div className="font-bold text-sm text-neon font-mono">
-                        {formatCurrency(client.monthly_value || 0)}
+                        {formatCurrency(Number(client.monthly_value) || 0)}
                       </div>
                     </div>
                   ))}
-                  {topClients.length === 0 && (
-                    <div className="text-center text-sm text-muted-foreground py-8">
-                      Nenhum cliente ativo encontrado.
-                    </div>
-                  )}
                 </div>
               </ScrollArea>
             </CardContent>
