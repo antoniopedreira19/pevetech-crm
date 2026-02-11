@@ -44,6 +44,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
 
+
 // --- Types ---
 type Client = Tables<"clients">;
 
@@ -61,6 +62,53 @@ const getInitials = (name: string | null) => {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+};
+
+type Align = "left" | "center" | "right";
+
+const alignTextClass: Record<Align, string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
+const alignJustifyClass: Record<Align, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
+const SortableHeader = ({
+  label,
+  column,
+  align,
+}: {
+  label: string;
+  column: any;
+  align: Align;
+}) => {
+  const isSorted = column.getIsSorted();
+
+  return (
+    <Button
+      variant="ghost"
+      onClick={() => column.toggleSorting(isSorted === "asc")}
+      className={cn(
+        "h-8 px-0 w-full hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors",
+        "flex",
+        alignJustifyClass[align],
+      )}
+    >
+      <span>{label}</span>
+      {isSorted === "asc" ? (
+        <ArrowUp className="ml-2 h-4 w-4 text-neon" />
+      ) : isSorted === "desc" ? (
+        <ArrowDown className="ml-2 h-4 w-4 text-neon" />
+      ) : (
+        <ArrowUpDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
+      )}
+    </Button>
+  );
 };
 
 // --- Status Badge Component ---
@@ -372,27 +420,8 @@ const ClientsPage = () => {
       {
         id: "company_info",
         accessorFn: (row) => row.company_name,
-        header: ({ column }) => {
-          const isSorted = column.getIsSorted();
-          return (
-            // -ml-4 compensa o padding do botão para alinhar perfeitamente à esquerda com a Avatar
-            <Button
-              variant="ghost"
-              onClick={() => column.toggleSorting(isSorted === "asc")}
-              className="-ml-4 h-8 px-4 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Empresa
-              {isSorted === "asc" ? (
-                <ArrowUp className="ml-2 h-4 w-4 text-neon" />
-              ) : isSorted === "desc" ? (
-                <ArrowDown className="ml-2 h-4 w-4 text-neon" />
-              ) : (
-                // Invisível por padrão, aparece sutilmente ao passar o mouse
-                <ArrowUpDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
-              )}
-            </Button>
-          );
-        },
+        meta: { align: "left" },
+        header: ({ column }) => <SortableHeader label="Empresa" column={column} align="left" />,
         cell: ({ row }) => {
           const client = row.original;
           return (
@@ -403,11 +432,9 @@ const ClientsPage = () => {
                   {getInitials(client.company_name)}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col">
-                <span className="font-semibold text-foreground text-[15px]">{client.company_name}</span>
-                {client.setor && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">{client.setor}</span>
-                )}
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-foreground text-[15px] truncate">{client.company_name}</span>
+                {client.setor && <span className="text-xs text-muted-foreground truncate">{client.setor}</span>}
               </div>
             </div>
           );
@@ -415,9 +442,10 @@ const ClientsPage = () => {
       },
       {
         accessorKey: "status",
-        header: () => <div className="text-center w-full">Status</div>,
+        meta: { align: "center" },
+        header: "Status",
         cell: ({ row }) => (
-          <div className="flex justify-center w-full">
+          <div className="flex justify-center">
             <StatusBadge status={row.getValue("status")} />
           </div>
         ),
@@ -428,50 +456,31 @@ const ClientsPage = () => {
       {
         id: "contact_info",
         accessorFn: (row) => row.name,
+        meta: { align: "left" },
         header: "Contato Principal",
         cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{row.original.name}</span>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-medium truncate">{row.original.name}</span>
             <span className="text-xs text-muted-foreground truncate">{row.original.email || "Sem e-mail"}</span>
           </div>
         ),
       },
       {
         accessorKey: "monthly_value",
-        header: ({ column }) => {
-          const isSorted = column.getIsSorted();
-          return (
-            // Wrapper para alinhar o botão inteiro à direita
-            <div className="flex justify-end w-full">
-              <Button
-                variant="ghost"
-                onClick={() => column.toggleSorting(isSorted === "asc")}
-                // -mr-4 compensa o padding do botão para alinhar perfeitamente à direita
-                className="-mr-4 h-8 px-4 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                MRR / Valor
-                {isSorted === "asc" ? (
-                  <ArrowUp className="ml-2 h-4 w-4 text-neon" />
-                ) : isSorted === "desc" ? (
-                  <ArrowDown className="ml-2 h-4 w-4 text-neon" />
-                ) : (
-                  <ArrowUpDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
-                )}
-              </Button>
-            </div>
-          );
-        },
+        meta: { align: "right" },
+        header: ({ column }) => <SortableHeader label="MRR / Valor" column={column} align="right" />,
         cell: ({ row }) => {
           const value = parseFloat(row.getValue("monthly_value"));
-          return <div className="text-right font-medium font-mono text-neon">{formatCurrency(value)}</div>;
+          return <div className="font-medium font-mono text-neon">{formatCurrency(value)}</div>;
         },
       },
       {
         id: "actions",
-        header: () => <div className="text-right w-full">Ações</div>,
-        cell: ({ row }) => {
+        meta: { align: "right" },
+        header: "Ações",
+        cell: () => {
           return (
-            <div className="flex justify-end w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -560,64 +569,68 @@ const ClientsPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-purple-500/5 pointer-events-none" />
 
         <div className="relative overflow-auto h-full">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-card/90 backdrop-blur z-10 border-b border-border/50">
+          <div className="min-w-[980px]">
+            {/* Header */}
+            <div className="sticky top-0 bg-card/90 backdrop-blur z-10 border-b border-border/50">
               {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id} className="hover:bg-transparent">
+                <div
+                  key={headerGroup.id}
+                  className="grid grid-cols-[minmax(280px,2.2fr)_140px_minmax(260px,2fr)_160px_72px]"
+                >
                   {headerGroup.headers.map((header) => {
-                    const colId = header.column.id;
-                    const align =
-                      colId === "status" ? "text-center" : colId === "monthly_value" || colId === "actions" ? "text-right" : "text-left";
+                    const align = ((header.column.columnDef.meta as any)?.align as Align | undefined) ?? "left";
 
                     return (
-                      <th
+                      <div
                         key={header.id}
-                        colSpan={header.colSpan}
                         className={cn(
-                          "h-11 px-4 align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]",
-                          align,
+                          "h-11 px-4 flex items-center font-medium text-muted-foreground uppercase tracking-wider text-[11px]",
+                          alignJustifyClass[align],
+                          alignTextClass[align],
                         )}
                       >
                         {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
+                      </div>
                     );
                   })}
-                </tr>
+                </div>
               ))}
-            </thead>
-            <tbody className="[&_tr:last-child]:border-0">
+            </div>
+
+            {/* Body */}
+            <div className="divide-y divide-border/40">
               {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <tr
+                  <div
                     key={row.id}
-                    className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-neon before:opacity-0 group-hover:before:opacity-100 before:transition-opacity"
+                    className="grid grid-cols-[minmax(280px,2.2fr)_140px_minmax(260px,2fr)_160px_72px] transition-all duration-200 hover:bg-neon/5 group relative"
                   >
+                    <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity" />
                     {row.getVisibleCells().map((cell) => {
-                      const colId = cell.column.id;
-                      const align =
-                        colId === "status"
-                          ? "text-center"
-                          : colId === "monthly_value" || colId === "actions"
-                            ? "text-right"
-                            : "text-left";
+                      const align = ((cell.column.columnDef.meta as any)?.align as Align | undefined) ?? "left";
 
                       return (
-                        <td key={cell.id} className={cn("px-4 py-3 align-middle", align)}>
+                        <div
+                          key={cell.id}
+                          className={cn(
+                            "px-4 py-3 flex items-center min-w-0",
+                            alignJustifyClass[align],
+                            alignTextClass[align],
+                          )}
+                        >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
+                        </div>
                       );
                     })}
-                  </tr>
+                  </div>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                    Nenhum cliente encontrado. Adicione seu primeiro cliente!
-                  </td>
-                </tr>
+                <div className="h-24 flex items-center justify-center text-muted-foreground">
+                  Nenhum cliente encontrado. Adicione seu primeiro cliente!
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         </div>
       </div>
 
