@@ -48,38 +48,49 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="fixed top-0 w-full z-50 glass">
+      <nav className="fixed top-0 w-full z-50 glass border-b border-border/10">
         <div className="container mx-auto flex items-center justify-between py-2 px-6">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
             <img src={pevetechLogo} alt="Pevetech" className="h-20" />
           </Link>
-          <div className="flex items-center gap-4">
-            <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <div className="hidden md:flex items-center gap-6">
+            <a
+              href="#servicos"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
               Serviços
             </a>
-            <a href="#cases" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="#cases"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
               Cases
             </a>
-            <a href="#contato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              href="#contato"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
               Contato
             </a>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+      {/* Hero - Corrigido o padding top (pt-40) para compensar o header alto */}
+      <section className="relative min-h-screen flex items-center justify-center pt-40 pb-20 overflow-hidden">
         {/* Aurora glow from bottom center */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,_hsl(120_100%_50%_/_0.12)_0%,_hsl(120_100%_30%_/_0.05)_40%,_transparent_70%)]" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse_at_center,_hsl(120_100%_50%_/_0.08)_0%,_transparent_70%)] blur-3xl" />
-        <div className="container mx-auto px-6 text-center relative z-10">
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[radial-gradient(ellipse_at_center,_hsl(120_100%_50%_/_0.08)_0%,_transparent_70%)] blur-3xl pointer-events-none" />
+
+        <div className="container mx-auto px-6 text-center relative z-10 flex flex-col items-center">
           <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={0}>
-            <span className="inline-block px-4 py-1.5 rounded-full border border-neon-dim text-neon text-xs font-display mb-6 tracking-wider">
+            <span className="inline-block px-4 py-1.5 rounded-full border border-neon/30 bg-neon/5 text-neon text-xs font-display mb-8 tracking-wider shadow-[0_0_15px_rgba(0,255,128,0.1)]">
               CTO AS A SERVICE
             </span>
           </motion.div>
+
           <motion.h1
-            className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight"
+            className="text-5xl md:text-7xl font-bold text-foreground mb-6 leading-tight max-w-4xl mx-auto"
             initial="hidden"
             animate="visible"
             variants={fadeUp}
@@ -87,11 +98,12 @@ const Index = () => {
           >
             Pare de Operar.
             <br />
-            <span className="text-neon glow-neon-text">
+            <span className="text-neon glow-neon-text relative">
               Comece a Escalar.
-              <span className="inline-block w-[3px] h-[0.85em] bg-neon ml-1 align-baseline animate-pulse-neon" />
+              <span className="absolute -right-4 top-2 md:top-4 w-[3px] h-[0.75em] bg-neon animate-pulse-neon" />
             </span>
           </motion.h1>
+
           <motion.p
             className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
             initial="hidden"
@@ -102,26 +114,27 @@ const Index = () => {
             Transforme rotinas manuais em automação inteligente. A estratégia de um CTO experiente para organizar sua
             casa e liberar seu tempo.
           </motion.p>
+
           <motion.div
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto"
             initial="hidden"
             animate="visible"
             variants={fadeUp}
             custom={3}
           >
-            <a href="#contato">
+            <a href="#contato" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="gradient-neon text-accent-foreground font-semibold text-base px-8 hover:opacity-90"
+                className="w-full sm:w-auto bg-neon text-neon-foreground font-semibold text-base px-8 hover:bg-neon/90 shadow-lg shadow-neon/20 transition-all hover:scale-105"
               >
                 Agendar Diagnóstico <ArrowRight className="ml-2" size={18} />
               </Button>
             </a>
-            <a href="#cases">
+            <a href="#cases" className="w-full sm:w-auto">
               <Button
                 size="lg"
                 variant="outline"
-                className="border-neon-dim text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors"
+                className="w-full sm:w-auto border-border text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors bg-background/50 backdrop-blur-sm"
               >
                 Ver Cases de Sucesso
               </Button>
@@ -129,7 +142,7 @@ const Index = () => {
           </motion.div>
 
           {/* Social Proof */}
-          <motion.div className="mt-20" initial="hidden" animate="visible" variants={fadeUp} custom={4}>
+          <motion.div className="mt-24 w-full" initial="hidden" animate="visible" variants={fadeUp} custom={4}>
             <p className="text-[11px] font-display uppercase tracking-[0.2em] text-muted-foreground mb-8">
               Tecnologia por trás de:
             </p>
@@ -143,9 +156,9 @@ const Index = () => {
               ].map((client) => (
                 <div
                   key={client.alt}
-                  className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-muted/20 flex items-center justify-center opacity-50 hover:opacity-100 transition-all duration-300 cursor-default overflow-hidden"
+                  className="w-16 h-16 md:w-20 md:h-20 rounded-full border border-border/50 bg-card/50 flex items-center justify-center opacity-60 hover:opacity-100 hover:border-neon/50 hover:shadow-[0_0_15px_rgba(0,255,128,0.1)] transition-all duration-300 cursor-default overflow-hidden"
                 >
-                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-contain p-2" />
                 </div>
               ))}
             </div>
@@ -154,7 +167,7 @@ const Index = () => {
       </section>
 
       {/* Serviços */}
-      <section id="servicos" className="py-24">
+      <section id="servicos" className="py-24 relative z-10">
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-4"
@@ -180,19 +193,21 @@ const Index = () => {
             {pillars.map((s, i) => (
               <motion.div
                 key={s.title}
-                className="p-6 rounded-lg bg-card border border-border hover:border-neon-dim transition-colors group"
+                className="p-8 rounded-2xl bg-card/30 backdrop-blur-sm border border-border/50 hover:border-neon/50 hover:bg-card/60 transition-all duration-300 group shadow-sm hover:shadow-neon/5"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
                 variants={fadeUp}
                 custom={i}
               >
-                <s.icon
-                  className="text-neon mb-4 group-hover:drop-shadow-[0_0_8px_hsl(120,100%,50%,0.5)] transition-all"
-                  size={28}
-                />
-                <h3 className="font-display text-lg font-semibold mb-2 text-foreground">{s.title}</h3>
-                <p className="text-sm text-muted-foreground">{s.desc}</p>
+                <div className="h-12 w-12 rounded-xl bg-background border border-border/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                  <s.icon
+                    className="text-neon group-hover:drop-shadow-[0_0_8px_hsl(120,100%,50%,0.5)] transition-all"
+                    size={24}
+                  />
+                </div>
+                <h3 className="font-display text-lg font-semibold mb-3 text-foreground">{s.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -200,7 +215,7 @@ const Index = () => {
       </section>
 
       {/* Cases */}
-      <section id="cases" className="py-24 bg-card/50">
+      <section id="cases" className="py-24 bg-card/20 border-y border-border/40 relative z-10">
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-16"
@@ -216,16 +231,18 @@ const Index = () => {
             {cases.map((c, i) => (
               <motion.div
                 key={c.company}
-                className="p-6 rounded-lg border border-border bg-background relative overflow-hidden"
+                className="p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm relative overflow-hidden group hover:border-neon/30 transition-colors"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
                 variants={fadeUp}
                 custom={i}
               >
-                <div className="absolute top-0 left-0 w-full h-0.5 gradient-neon" />
-                <span className="text-xs font-display text-neon mb-2 block">{c.area}</span>
-                <h3 className="text-xl font-semibold mb-2 text-foreground">{c.company}</h3>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon/40 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+                <span className="inline-flex items-center rounded-md bg-neon/10 px-2 py-1 text-xs font-medium text-neon ring-1 ring-inset ring-neon/20 mb-4">
+                  {c.area}
+                </span>
+                <h3 className="text-xl font-semibold mb-3 text-foreground">{c.company}</h3>
                 <p className="text-muted-foreground">{c.result}</p>
               </motion.div>
             ))}
@@ -234,7 +251,7 @@ const Index = () => {
       </section>
 
       {/* Contato */}
-      <section id="contato" className="py-24">
+      <section id="contato" className="py-24 relative z-10">
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-4"
@@ -263,10 +280,10 @@ const Index = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border">
-        <div className="container mx-auto px-6 flex items-center justify-between">
+      <footer className="py-8 border-t border-border/40 bg-background relative z-10">
+        <div className="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src={pevetechLogo} alt="Pevetech" className="h-14" />
+            <img src={pevetechLogo} alt="Pevetech" className="h-12" />
           </div>
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} Pevetech. Todos os direitos reservados.
