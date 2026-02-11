@@ -1,7 +1,21 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { Search, MoreHorizontal, ArrowUpDown, Plus, Filter, Building2, User, Mail, Phone } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Search,
+  MoreHorizontal,
+  ArrowUpDown,
+  Plus,
+  Filter,
+  Building2,
+  User,
+  Mail,
+  Phone,
+  Briefcase,
+  DollarSign,
+  Calendar,
+} from "lucide-react";
 import {
   ColumnDef,
   flexRender,
@@ -14,6 +28,7 @@ import {
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
@@ -50,13 +66,12 @@ const getInitials = (name: string | null) => {
 // --- Status Badge Component ---
 const StatusBadge = ({ status }: { status: string | null }) => {
   const styles = {
-    active: "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-emerald-500/20",
-    inactive: "bg-slate-500/10 text-slate-400 hover:bg-slate-500/20 border-slate-500/20",
-    lead: "bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border-amber-500/20",
-    churned: "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-red-500/20",
+    active: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    inactive: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+    lead: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    churned: "bg-red-500/10 text-red-500 border-red-500/20",
   };
 
-  // Default to 'lead' style if status is unknown or null
   const badgeStyle = styles[status as keyof typeof styles] || styles.lead;
   const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Desconhecido";
 
@@ -67,95 +82,255 @@ const StatusBadge = ({ status }: { status: string | null }) => {
   );
 };
 
-// --- Client Details Drawer (Side Panel) ---
-const ClientDetailsDrawer = ({
-  client,
+// --- Formulário de Novo Cliente (Drawer) ---
+const NewClientDrawer = ({
   open,
   onOpenChange,
+  onSuccess,
 }: {
-  client: Client | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }) => {
-  if (!client) return null;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    company_name: "",
+    email: "",
+    phone: "",
+    status: "active",
+    start_date: new Date().toISOString().split("T")[0],
+    monthly_value: 0,
+    logo_url: "",
+    setor: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.from("clients").insert([
+        {
+          name: formData.name,
+          company_name: formData.company_name,
+          email: formData.email,
+          phone: formData.phone,
+          status: formData.status as any, // Forçando o cast para o enum do Supabase
+          start_date: formData.start_date,
+          monthly_value: formData.monthly_value,
+          logo_url: formData.logo_url,
+          setor: formData.setor,
+        },
+      ]);
+
+      if (error) throw error;
+
+      toast.success("Cliente cadastrado com sucesso!");
+      onSuccess(); // Recarrega a tabela
+      onOpenChange(false); // Fecha o modal
+
+      // Reseta o formulário
+      setFormData({
+        name: "",
+        company_name: "",
+        email: "",
+        phone: "",
+        status: "active",
+        start_date: new Date().toISOString().split("T")[0],
+        monthly_value: 0,
+        logo_url: "",
+        setor: "",
+      });
+    } catch (error: any) {
+      console.error("Erro ao salvar cliente:", error);
+      toast.error(error.message || "Erro ao cadastrar o cliente. Verifique os dados.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px] border-l border-border/50 bg-background/80 backdrop-blur-xl p-0">
-        <SheetHeader className="p-6 pb-2 text-left">
-          <div className="flex items-center gap-4 mb-2">
-            <Avatar className="h-16 w-16 border-2 border-neon/20">
-              <AvatarImage src={client.logo_url || undefined} />
-              <AvatarFallback className="bg-neon/10 text-neon text-xl">
-                {getInitials(client.company_name)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <SheetTitle className="text-2xl font-bold">{client.company_name}</SheetTitle>
-              <StatusBadge status={client.status} />
-            </div>
-          </div>
-          <SheetDescription>Cliente desde {new Date(client.created_at).toLocaleDateString("pt-BR")}</SheetDescription>
-        </SheetHeader>
+      <SheetContent className="w-[400px] sm:w-[540px] border-l border-border/50 bg-background/95 backdrop-blur-xl p-0 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-full">
+          <SheetHeader className="p-6 pb-4 border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur z-10">
+            <SheetTitle className="text-2xl font-bold flex items-center gap-2">
+              <Building2 className="h-6 w-6 text-neon" />
+              Novo Cliente
+            </SheetTitle>
+            <SheetDescription>
+              Preencha os dados abaixo para adicionar uma nova empresa ao seu portfólio.
+            </SheetDescription>
+          </SheetHeader>
 
-        <Separator className="bg-border/50" />
+          <div className="p-6 space-y-8 flex-1">
+            {/* Seção 1: Dados da Empresa */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Briefcase className="h-4 w-4" /> Informações da Empresa
+              </h3>
 
-        <div className="p-6 space-y-8">
-          {/* Métricas Rápidas */}
-          <div className="grid grid-cols-2 gap-4 p-4 bg-card/30 rounded-xl border border-border/30">
-            <div>
-              <p className="text-sm text-muted-foreground">MRR Atual</p>
-              <p className="text-xl font-bold text-neon">{formatCurrency(client.monthly_value)}</p>
-            </div>
-            {/* Placeholder para métrica futura, ex: Health Score */}
-            <div>
-              <p className="text-sm text-muted-foreground">Health Score (IA)</p>
-              <p className="text-xl font-bold text-emerald-400">92/100</p>
-            </div>
-          </div>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="company_name">Nome da Empresa *</Label>
+                  <Input
+                    id="company_name"
+                    name="company_name"
+                    required
+                    value={formData.company_name}
+                    onChange={handleChange}
+                    className="bg-card/50"
+                    placeholder="Ex: Pevetech S.A."
+                  />
+                </div>
 
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Informações de Contato
-            </h3>
-
-            <div className="flex items-center gap-3">
-              <User className="text-neon h-5 w-5" />
-              <div>
-                <p className="text-sm font-medium leading-none">{client.name}</p>
-                <p className="text-sm text-muted-foreground">Ponto Focal</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="setor">Setor / Nicho</Label>
+                    <Input
+                      id="setor"
+                      name="setor"
+                      value={formData.setor}
+                      onChange={handleChange}
+                      className="bg-card/50"
+                      placeholder="Ex: Tecnologia"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="logo_url">URL da Logo</Label>
+                    <Input
+                      id="logo_url"
+                      name="logo_url"
+                      value={formData.logo_url}
+                      onChange={handleChange}
+                      className="bg-card/50"
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Mail className="text-neon h-5 w-5" />
-              <div>
-                <p className="text-sm font-medium leading-none">{client.email}</p>
+
+            <Separator className="bg-border/40" />
+
+            {/* Seção 2: Contato Principal */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <User className="h-4 w-4" /> Contato Principal
+              </h3>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="name">Nome do Responsável *</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="bg-card/50"
+                    placeholder="Ex: Antonio Pedreira"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="bg-card/50"
+                      placeholder="contato@empresa.com"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="bg-card/50"
+                      placeholder="(71) 99999-9999"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <Phone className="text-neon h-5 w-5" />
-              <div>
-                <p className="text-sm font-medium leading-none">{client.phone || "Não informado"}</p>
+
+            <Separator className="bg-border/40" />
+
+            {/* Seção 3: Dados do Contrato */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <DollarSign className="h-4 w-4" /> Contrato & Status
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="monthly_value">Valor Mensal (MRR)</Label>
+                  <Input
+                    id="monthly_value"
+                    name="monthly_value"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.monthly_value}
+                    onChange={(e) => setFormData({ ...formData, monthly_value: parseFloat(e.target.value) || 0 })}
+                    className="bg-card/50 font-mono text-neon"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="start_date">Data de Início</Label>
+                  <Input
+                    id="start_date"
+                    name="start_date"
+                    type="date"
+                    value={formData.start_date}
+                    onChange={handleChange}
+                    className="bg-card/50 text-muted-foreground"
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label htmlFor="status">Status do Cliente</Label>
+                  <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
+                    <SelectTrigger className="bg-card/50">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo (Gerando Receita)</SelectItem>
+                      <SelectItem value="lead">Lead (Em Negociação)</SelectItem>
+                      <SelectItem value="inactive">Inativo (Pausado)</SelectItem>
+                      <SelectItem value="churned">Cancelado (Churn)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Placeholder para próxima feature: Últimas Atividades */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex justify-between">
-              Últimas Atividades
-              <Badge variant="secondary" className="text-xs">
-                Em breve
-              </Badge>
-            </h3>
-            <div className="text-sm text-muted-foreground italic pl-2 border-l-2 border-border">
-              O histórico de tarefas e interações aparecerá aqui.
-            </div>
-          </div>
-        </div>
-        <SheetFooter className="absolute bottom-0 w-full p-6 border-t border-border/50 bg-background/95 backdrop-blur">
-          <Button className="w-full bg-neon text-neon-foreground hover:bg-neon/90">Editar Cliente</Button>
-        </SheetFooter>
+          <SheetFooter className="p-6 border-t border-border/50 bg-background/95 sticky bottom-0 z-10">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20"
+            >
+              {isSubmitting ? "Salvando..." : "Salvar Cliente"}
+            </Button>
+          </SheetFooter>
+        </form>
       </SheetContent>
     </Sheet>
   );
@@ -168,27 +343,28 @@ const ClientsPage = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  // State for Drawer
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  // States para os modais
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Modal de criação
 
-  // Fetch Data
+  const loadClients = async () => {
+    setLoading(true);
+    try {
+      const { data: clients, error } = await supabase
+        .from("clients")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setData(clients || []);
+    } catch (error) {
+      console.error("Erro ao carregar clientes:", error);
+      toast.error("Não foi possível carregar a lista de clientes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadClients = async () => {
-      try {
-        const { data: clients, error } = await supabase
-          .from("clients")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setData(clients || []);
-      } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadClients();
   }, []);
 
@@ -207,7 +383,7 @@ const ClientsPage = () => {
             <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
           </Button>
         ),
-        accessorFn: (row) => row.company_name, // For sorting
+        accessorFn: (row) => row.company_name,
         cell: ({ row }) => {
           const client = row.original;
           return (
@@ -220,6 +396,9 @@ const ClientsPage = () => {
               </Avatar>
               <div className="flex flex-col">
                 <span className="font-semibold text-foreground text-[15px]">{client.company_name}</span>
+                {client.setor && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">{client.setor}</span>
+                )}
               </div>
             </div>
           );
@@ -240,7 +419,7 @@ const ClientsPage = () => {
         cell: ({ row }) => (
           <div className="flex flex-col">
             <span className="text-sm font-medium">{row.original.name}</span>
-            <span className="text-xs text-muted-foreground truncate">{row.original.email}</span>
+            <span className="text-xs text-muted-foreground truncate">{row.original.email || "Sem e-mail"}</span>
           </div>
         ),
       },
@@ -266,7 +445,6 @@ const ClientsPage = () => {
       {
         id: "actions",
         cell: ({ row }) => {
-          const client = row.original;
           return (
             <div className="text-right" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
@@ -281,14 +459,6 @@ const ClientsPage = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur border-border/50">
                   <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setSelectedClient(client);
-                      setIsDrawerOpen(true);
-                    }}
-                  >
-                    Ver Detalhes
-                  </DropdownMenuItem>
                   <DropdownMenuItem>Editar</DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-border/50" />
                   <DropdownMenuItem className="text-red-500 hover:text-red-400 hover:bg-red-500/10">
@@ -318,13 +488,16 @@ const ClientsPage = () => {
     },
   });
 
-  const handleRowClick = (client: Client) => {
-    setSelectedClient(client);
-    setIsDrawerOpen(true);
-  };
-
   if (loading) {
-    return <ClientsLoadingSkeleton />;
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-10 w-[300px]" />
+        </div>
+        <Skeleton className="h-[400px] w-full rounded-xl" />
+      </div>
+    );
   }
 
   return (
@@ -348,10 +521,10 @@ const ClientsPage = () => {
               className="pl-10 bg-card/50 border-border/50 focus-visible:ring-neon"
             />
           </div>
-          <Button variant="outline" size="icon" className="border-border/50 hover:bg-card/80">
-            <Filter className="h-4 w-4" />
-          </Button>
-          <Button className="bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20 transition-all hover:scale-105 active:scale-95">
+          <Button
+            onClick={() => setIsDrawerOpen(true)}
+            className="bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20 transition-all hover:scale-105 active:scale-95"
+          >
             <Plus className="mr-2 h-4 w-4" /> Novo Cliente
           </Button>
         </div>
@@ -359,7 +532,6 @@ const ClientsPage = () => {
 
       {/* Main Table Area */}
       <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden flex-1 relative">
-        {/* Gradient Overlay for tech feel */}
         <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-purple-500/5 pointer-events-none" />
 
         <div className="relative overflow-auto h-full">
@@ -383,12 +555,8 @@ const ClientsPage = () => {
                 table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                    // Row click interactivity
-                    onClick={() => handleRowClick(row.original)}
-                    className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 cursor-pointer group relative"
+                    className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative"
                   >
-                    {/* Subtle neon left border on hover */}
                     <td className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity"></td>
                     {row.getVisibleCells().map((cell) => (
                       <td key={cell.id} className="p-3 align-middle">
@@ -400,7 +568,7 @@ const ClientsPage = () => {
               ) : (
                 <tr>
                   <td colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                    Nenhum cliente encontrado.
+                    Nenhum cliente encontrado. Adicione seu primeiro cliente!
                   </td>
                 </tr>
               )}
@@ -409,37 +577,10 @@ const ClientsPage = () => {
         </div>
       </div>
 
-      {/* Drawer Component */}
-      <ClientDetailsDrawer client={selectedClient} open={isDrawerOpen} onOpenChange={setIsDrawerOpen} />
+      {/* Drawer de Cadastro de Cliente */}
+      <NewClientDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} onSuccess={loadClients} />
     </div>
   );
 };
-
-// Skeleton loader for better perceived performance
-const ClientsLoadingSkeleton = () => (
-  <div className="space-y-6 p-6">
-    <div className="flex justify-between items-center">
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-64" />
-      </div>
-      <Skeleton className="h-10 w-[300px]" />
-    </div>
-    <div className="rounded-xl border border-border/50 overflow-hidden">
-      <div className="h-12 bg-card/50 border-b border-border/50" />
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="h-20 border-b border-border/40 flex items-center px-4 gap-4">
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="space-y-2 flex-1">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-          <Skeleton className="h-8 w-20 rounded-full" />
-          <Skeleton className="h-6 w-24" />
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
 export default ClientsPage;
