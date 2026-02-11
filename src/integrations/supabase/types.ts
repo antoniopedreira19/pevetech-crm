@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_mrr_history: {
+        Row: {
+          client_id: string
+          created_at: string
+          effective_date: string
+          id: string
+          new_value: number
+          previous_value: number
+          reason: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_value?: number
+          previous_value?: number
+          reason?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_value?: number
+          previous_value?: number
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_mrr_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           company_name: string
