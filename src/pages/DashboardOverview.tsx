@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+// Adicione as importações de Avatar se ainda não estiverem presentes
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // --- Types ---
 type Client = Tables<"clients">;
@@ -36,6 +38,17 @@ const getLast6Months = () => {
     months.push(d);
   }
   return months;
+};
+
+// Funções auxiliares para o Avatar
+const getInitials = (name: string | null) => {
+  if (!name) return "CL";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 };
 
 // --- Sub-components ---
@@ -199,12 +212,10 @@ const DashboardOverview = () => {
     const months = getLast6Months();
     return months.map((date) => {
       const monthKey = date.toISOString().slice(0, 7); // YYYY-MM
-      // Simulação de crescimento baseada na data de criação (se existir) ou mock se faltar dados
       const monthlyRevenue = clients
         .filter((c) => c.created_at && c.created_at <= date.toISOString() && c.status === "active")
         .reduce((sum, c) => sum + (c.monthly_value || 0), 0);
 
-      // Fallback visual se não houver datas históricas suficientes para um gráfico bonito
       const displayValue = monthlyRevenue > 0 ? monthlyRevenue : metrics.mrr * (0.5 + Math.random() * 0.5);
 
       return {
@@ -298,29 +309,35 @@ const DashboardOverview = () => {
             </CardContent>
           </Card>
 
-          {/* Top Clients Table */}
+          {/* Top Clients Table - ATUALIZADO PARA MRR E LOGO */}
           <Card className="bg-card/50 backdrop-blur-sm border-border/50 flex-1">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Top Clientes (LTV)</CardTitle>
+              <CardTitle className="text-lg">Top Clientes (MRR)</CardTitle>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[200px] pr-4">
                 <div className="space-y-4">
-                  {topClients.map((client, i) => (
+                  {topClients.map((client) => (
                     <div
                       key={client.id}
                       className="flex items-center justify-between border-b border-border/40 last:border-0 pb-3 last:pb-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-bold">
-                          {client.name?.substring(0, 2).toUpperCase()}
-                        </div>
+                        {/* Avatar atualizado para usar logotipo se disponível */}
+                        <Avatar className="h-8 w-8 border border-border/50">
+                          <AvatarImage src={client.logo_url || undefined} alt={client.company_name || ""} />
+                          <AvatarFallback className="bg-secondary text-[10px] font-bold">
+                            {getInitials(client.company_name)}
+                          </AvatarFallback>
+                        </Avatar>
                         <div>
-                          <p className="text-sm font-medium leading-none">{client.name}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{client.company_name}</p>
+                          <p className="text-sm font-medium leading-none">{client.company_name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{client.name}</p>
                         </div>
                       </div>
-                      <div className="font-medium text-sm">{formatCurrency(client.monthly_value || 0)}</div>
+                      <div className="font-bold text-sm text-neon font-mono">
+                        {formatCurrency(client.monthly_value || 0)}
+                      </div>
                     </div>
                   ))}
                   {topClients.length === 0 && (
