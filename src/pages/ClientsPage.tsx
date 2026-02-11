@@ -560,14 +560,7 @@ const ClientsPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-purple-500/5 pointer-events-none" />
 
         <div className="relative overflow-auto h-full">
-          <table className="w-full table-fixed caption-bottom text-sm">
-            <colgroup>
-              <col className="w-[34%]" />
-              <col className="w-[14%]" />
-              <col className="w-[28%]" />
-              <col className="w-[16%]" />
-              <col className="w-[8%]" />
-            </colgroup>
+          <table className="w-full text-sm">
             <thead className="sticky top-0 bg-card/90 backdrop-blur z-10 border-b border-border/50">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id} className="hover:bg-transparent">
