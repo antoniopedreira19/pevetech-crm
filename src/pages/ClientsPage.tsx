@@ -17,6 +17,7 @@ import {
   Phone,
   Pencil,
   UserX,
+  Mail,
 } from "lucide-react";
 import {
   ColumnDef,
@@ -42,7 +43,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
@@ -107,14 +108,24 @@ const SortableHeader = ({ label, column, align }: { label: string; column: any; 
 };
 
 const StatusBadge = ({ status }: { status: string | null }) => {
-  const styles = {
+  const styles: Record<string, string> = {
     active: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
     inactive: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+    paused: "bg-slate-500/10 text-slate-400 border-slate-500/20",
     lead: "bg-amber-500/10 text-amber-500 border-amber-500/20",
     churned: "bg-red-500/10 text-red-500 border-red-500/20",
   };
-  const badgeStyle = styles[status as keyof typeof styles] || styles.lead;
-  const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Desconhecido";
+
+  const labelMap: Record<string, string> = {
+    active: "Ativo",
+    inactive: "Inativo",
+    paused: "Inativo",
+    churned: "Cancelado",
+    lead: "Lead",
+  };
+
+  const badgeStyle = styles[status || "lead"] || styles.lead;
+  const label = labelMap[status || "lead"] || "Lead";
   return (
     <Badge variant="outline" className={`font-medium border ${badgeStyle}`}>
       {label}
@@ -122,7 +133,7 @@ const StatusBadge = ({ status }: { status: string | null }) => {
   );
 };
 
-// --- Formulário de Cliente (Drawer Reutilizável) ---
+// --- Form Drawer ---
 const ClientFormDrawer = ({
   open,
   onOpenChange,
@@ -160,18 +171,6 @@ const ClientFormDrawer = ({
         logo_url: client.logo_url || "",
         setor: client.setor || "",
       });
-    } else {
-      setFormData({
-        name: "",
-        company_name: "",
-        email: "",
-        phone: "",
-        status: "active",
-        start_date: new Date().toISOString().split("T")[0],
-        monthly_value: 0,
-        logo_url: "",
-        setor: "",
-      });
     }
   }, [client, open]);
 
@@ -179,19 +178,21 @@ const ClientFormDrawer = ({
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      const payload = { ...formData, status: formData.status as any };
+
       if (client) {
-        const { error } = await supabase.from("clients").update(formData).eq("id", client.id);
+        const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
         if (error) throw error;
-        toast.success("Cliente atualizado com sucesso!");
+        toast.success("Cliente atualizado!");
       } else {
-        const { error } = await supabase.from("clients").insert([formData]);
+        const { error } = await supabase.from("clients").insert([payload]);
         if (error) throw error;
-        toast.success("Cliente cadastrado com sucesso!");
+        toast.success("Cliente cadastrado!");
       }
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar dados.");
+      toast.error(error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -201,13 +202,12 @@ const ClientFormDrawer = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[400px] sm:w-[540px] border-l border-border/50 bg-background/95 backdrop-blur-xl p-0 overflow-y-auto">
         <form onSubmit={handleSubmit} className="flex flex-col min-h-full">
-          <SheetHeader className="p-6 pb-4 border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur z-10">
-            <SheetTitle className="text-2xl font-bold flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-neon" />
-              {client ? "Editar Cliente" : "Novo Cliente"}
+          <SheetHeader className="p-6 border-b border-border/50 sticky top-0 bg-background/95 z-10">
+            <SheetTitle className="flex items-center gap-2">
+              <Building2 className="text-neon" /> {client ? "Editar Dados" : "Novo Cliente"}
             </SheetTitle>
           </SheetHeader>
-          <div className="p-6 space-y-6 flex-1">
+          <div className="p-6 space-y-6">
             <div className="space-y-4">
               <Label>Nome da Empresa *</Label>
               <Input
@@ -216,7 +216,6 @@ const ClientFormDrawer = ({
                 onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
                 className="bg-card/50"
               />
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>Setor</Label>
@@ -236,7 +235,7 @@ const ClientFormDrawer = ({
                 </div>
               </div>
             </div>
-            <Separator className="bg-border/40" />
+            <Separator />
             <div className="space-y-4">
               <Label>Nome do Responsável *</Label>
               <Input
@@ -249,7 +248,6 @@ const ClientFormDrawer = ({
                 <div className="space-y-1">
                   <Label>E-mail</Label>
                   <Input
-                    type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="bg-card/50"
@@ -266,10 +264,10 @@ const ClientFormDrawer = ({
                 </div>
               </div>
             </div>
-            <Separator className="bg-border/40" />
+            <Separator />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label>MRR (R$)</Label>
+                <Label>Valor MRR (R$)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -294,12 +292,9 @@ const ClientFormDrawer = ({
               </div>
             </div>
           </div>
-          <SheetFooter className="p-6 border-t border-border/50 bg-background/95 sticky bottom-0">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-neon text-neon-foreground hover:bg-neon/90">
-              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
+          <SheetFooter className="p-6 border-t border-border/50 sticky bottom-0 bg-background/95">
+            <Button type="submit" className="w-full bg-neon text-neon-foreground">
+              {isSubmitting ? "Gravando..." : "Salvar Dados"}
             </Button>
           </SheetFooter>
         </form>
@@ -308,11 +303,11 @@ const ClientFormDrawer = ({
   );
 };
 
-// --- Main Page Component ---
+// --- Main Page ---
 const ClientsPage = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Client[]>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "monthly_value", desc: true }]); // Ordenação default por MRR decrescente
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -320,14 +315,11 @@ const ClientsPage = () => {
   const loadClients = async () => {
     setLoading(true);
     try {
-      const { data: clients, error } = await supabase
-        .from("clients")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data: clients, error } = await supabase.from("clients").select("*");
       if (error) throw error;
       setData(clients || []);
     } catch (error) {
-      toast.error("Erro ao carregar clientes.");
+      toast.error("Falha ao carregar.");
     } finally {
       setLoading(false);
     }
@@ -341,13 +333,13 @@ const ClientsPage = () => {
     try {
       const { error } = await supabase
         .from("clients")
-        .update({ status: "inactive", monthly_value: 0 })
+        .update({ status: "inactive" as any, monthly_value: 0 })
         .eq("id", client.id);
       if (error) throw error;
-      toast.success(`${client.company_name} inativado (MRR zerado).`);
+      toast.success(`${client.company_name} inativado.`);
       loadClients();
     } catch (error) {
-      toast.error("Erro ao inativar cliente.");
+      toast.error("Erro ao inativar.");
     }
   };
 
@@ -361,13 +353,11 @@ const ClientsPage = () => {
           <div className="flex items-center gap-3">
             <Avatar className="h-9 w-9 border border-border/50">
               <AvatarImage src={row.original.logo_url || undefined} />
-              <AvatarFallback className="bg-secondary text-xs font-medium">
-                {getInitials(row.original.company_name)}
-              </AvatarFallback>
+              <AvatarFallback>{getInitials(row.original.company_name)}</AvatarFallback>
             </Avatar>
-            <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-foreground text-[15px] truncate">{row.original.company_name}</span>
-              <span className="text-xs text-muted-foreground truncate">{row.original.setor || "Sem setor"}</span>
+            <div className="flex flex-col">
+              <span className="font-semibold text-[15px]">{row.original.company_name}</span>
+              <span className="text-xs text-muted-foreground">{row.original.setor}</span>
             </div>
           </div>
         ),
@@ -385,19 +375,22 @@ const ClientsPage = () => {
         id: "contact_info",
         header: "Contato Principal",
         cell: ({ row }) => (
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium truncate">{row.original.name}</span>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Phone className="h-3 w-3" /> {formatPhoneNumber(row.original.phone)}
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-foreground">{row.original.name}</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Phone size={11} className="text-neon/70" /> {formatPhoneNumber(row.original.phone)}
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Mail size={11} className="text-neon/70" /> {row.original.email || "Sem e-mail"}
             </div>
           </div>
         ),
       },
       {
         accessorKey: "monthly_value",
-        header: ({ column }) => <SortableHeader label="MRR / Valor" column={column} align="right" />,
+        header: ({ column }) => <SortableHeader label="MRR" column={column} align="right" />,
         cell: ({ row }) => (
-          <div className="font-medium font-mono text-neon text-right">{formatCurrency(row.original.monthly_value)}</div>
+          <div className="text-right font-mono text-neon font-bold">{formatCurrency(row.original.monthly_value)}</div>
         ),
       },
       {
@@ -407,26 +400,21 @@ const ClientsPage = () => {
           <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-neon/10 hover:text-neon">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <MoreHorizontal size={16} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur border-border/50">
-                <DropdownMenuLabel>Gestão</DropdownMenuLabel>
+              <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => {
                     setSelectedClient(row.original);
                     setIsDrawerOpen(true);
                   }}
-                  className="cursor-pointer"
                 >
-                  <Pencil className="mr-2 h-4 w-4" /> Editar Informações
+                  <Pencil className="mr-2 h-4 w-4" /> Editar
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border/50" />
-                <DropdownMenuItem
-                  onClick={() => handleInactivate(row.original)}
-                  className="text-red-500 hover:bg-red-500/10 cursor-pointer"
-                >
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleInactivate(row.original)} className="text-red-500">
                   <UserX className="mr-2 h-4 w-4" /> Inativar (Zerar MRR)
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -451,31 +439,24 @@ const ClientsPage = () => {
 
   if (loading)
     return (
-      <div className="p-6 space-y-6">
-        <Skeleton className="h-10 w-full" />
+      <div className="p-8">
         <Skeleton className="h-[400px] w-full" />
       </div>
     );
 
   return (
-    <div className="space-y-6 p-6 animate-in fade-in duration-500 h-full flex flex-col">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 pb-2 border-b border-border/40">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Building2 className="text-neon h-8 w-8" />
-            Carteira de Clientes
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="relative w-full md:w-[300px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              value={(table.getColumn("company_info")?.getFilterValue() as string) ?? ""}
-              onChange={(e) => table.getColumn("company_info")?.setFilterValue(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center border-b border-border/40 pb-4">
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+          <Building2 className="text-neon" /> Clientes
+        </h1>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Buscar..."
+            value={(table.getColumn("company_info")?.getFilterValue() as string) ?? ""}
+            onChange={(e) => table.getColumn("company_info")?.setFilterValue(e.target.value)}
+            className="w-64"
+          />
           <Button
             onClick={() => {
               setSelectedClient(null);
@@ -483,41 +464,38 @@ const ClientsPage = () => {
             }}
             className="bg-neon text-neon-foreground"
           >
-            <Plus className="mr-2 h-4 w-4" /> Novo Cliente
+            <Plus size={16} className="mr-2" /> Novo
           </Button>
         </div>
       </div>
-
-      <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden flex-1 relative">
-        <div className="relative overflow-auto h-full">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-card/90 border-b border-border/50">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-4 py-3 text-left font-medium text-muted-foreground uppercase text-[11px]"
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-neon/5 transition-colors group">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="rounded-xl border border-border/50 bg-card/30 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-card/90 border-b border-border/50">
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id}>
+                {hg.headers.map((h) => (
+                  <th
+                    key={h.id}
+                    className="px-4 py-3 text-left font-medium text-muted-foreground uppercase text-[10px] tracking-widest"
+                  >
+                    {flexRender(h.column.columnDef.header, h.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-border/40">
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id} className="hover:bg-neon/5 transition-colors">
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="px-4 py-3">
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       <ClientFormDrawer
         open={isDrawerOpen}
