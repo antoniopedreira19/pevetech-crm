@@ -56,6 +56,51 @@ export type Database = {
         }
         Relationships: []
       }
+      lab_projects: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          external_url: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          slug: string
+          stack: string[] | null
+          status: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          external_url: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          slug: string
+          stack?: string[] | null
+          status?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          external_url?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          slug?: string
+          stack?: string[] | null
+          status?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           ai_diagnostic: string | null
