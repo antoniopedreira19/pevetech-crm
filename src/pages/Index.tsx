@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Workflow, Bot, BarChart3, Compass, ArrowRight, TrendingUp, LineChart } from "lucide-react";
+import { Workflow, Bot, BarChart3, Compass, ArrowRight, TrendingUp, LineChart, Beaker } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
 import grifoLogo from "@/assets/clients/grifo.jpg";
 import californiaLogo from "@/assets/clients/california.jpg";
@@ -81,6 +81,14 @@ const Index = () => {
             <a href="#diagnostico" className="text-sm font-medium text-neon hover:text-neon/80 transition-colors">
               Diagnóstico (IA)
             </a>
+            {/* Link Pevetech Labs */}
+            <Link
+              to="/labs"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5 group border-l border-border/50 pl-6 ml-2"
+            >
+              <Beaker size={14} className="text-neon group-hover:scale-110 transition-transform" />
+              Pevetech Labs
+            </Link>
           </div>
         </div>
       </nav>
