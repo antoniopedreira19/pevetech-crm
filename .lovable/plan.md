@@ -1,26 +1,60 @@
 
-# Correção do Desalinhamento da Tabela de Clientes
 
-## Problema
-Existe um `<td>` extra em cada linha da tabela que serve como indicador visual (barra verde no hover). Esse elemento ocupa uma coluna adicional que os cabeçalhos nao possuem, causando o deslocamento de todas as colunas de dados para a direita.
+## Historico de MRR por Cliente
 
-## Solucao
-Remover o `<td>` extra e aplicar o efeito de borda esquerda diretamente na linha (`<tr>`) usando um pseudo-elemento CSS (`before:`), mantendo o visual identico sem afetar a estrutura da tabela.
+### O Problema
+Hoje, quando voce atualiza o MRR de um cliente, o valor antigo e sobrescrito. Nao ha como saber quanto era o MRR antes, nem quando mudou.
 
-## Detalhes Tecnicos
+### A Solucao
+Criar uma tabela de **historico de MRR** (`client_mrr_history`) que registra cada alteracao de valor, com data e motivo. O campo `monthly_value` na tabela `clients` continua existindo como o valor atual, mas cada mudanca gera um registro no historico.
 
-**Arquivo:** `src/pages/ClientsPage.tsx`
+### Como vai funcionar
 
-1. **Remover** o `<td>` extra na linha 583:
-   ```
-   <td className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity"></td>
-   ```
+1. **Nova tabela `client_mrr_history`** com as colunas:
+   - `id` (uuid, PK)
+   - `client_id` (uuid, FK para clients)
+   - `previous_value` (numeric) - valor anterior
+   - `new_value` (numeric) - novo valor
+   - `reason` (text) - motivo da alteracao (ex: "Novo modulo contratado", "Reajuste anual")
+   - `effective_date` (timestamp) - a partir de quando vale o novo valor
+   - `created_at` (timestamp) - quando o registro foi criado
 
-2. **Adicionar** pseudo-elemento `before:` na classe do `<tr>` para replicar o efeito visual:
-   ```
-   className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative
-     before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[2px] before:bg-neon
-     before:opacity-0 group-hover:before:opacity-100 before:transition-opacity"
-   ```
+2. **Fluxo na interface**: Ao editar o MRR de um cliente (na pagina de clientes), se o valor mudar, abre um campo para informar o **motivo** da alteracao. Ao salvar, o sistema:
+   - Insere um registro em `client_mrr_history` com valor antigo, valor novo, motivo e data
+   - Atualiza o `monthly_value` na tabela `clients`
 
-Isso corrige o alinhamento sem perder o efeito visual de destaque ao hover.
+3. **Grafico de evolucao no Dashboard**: O grafico de "Crescimento de Receita" passa a usar dados reais do historico, mostrando a evolucao do MRR total ao longo do tempo (somando os valores vigentes de cada cliente em cada periodo).
+
+### Detalhes Tecnicos
+
+**1. Migracao SQL**
+```sql
+CREATE TABLE client_mrr_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  previous_value numeric NOT NULL DEFAULT 0,
+  new_value numeric NOT NULL DEFAULT 0,
+  reason text,
+  effective_date timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE client_mrr_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admin full access mrr_history"
+  ON client_mrr_history FOR ALL USING (true);
+
+-- Registro inicial para clientes existentes
+INSERT INTO client_mrr_history (client_id, previous_value, new_value, reason, effective_date)
+SELECT id, 0, COALESCE(monthly_value, 0), 'Valor inicial cadastrado', COALESCE(created_at, now())
+FROM clients;
+```
+
+**2. ClientsPage.tsx**
+- No drawer de edicao, ao detectar que o MRR mudou, exibir um campo "Motivo da alteracao" (obrigatorio)
+- Ao salvar, inserir o registro no historico antes de atualizar o cliente
+
+**3. DashboardOverview.tsx**
+- Buscar dados de `client_mrr_history` para calcular o MRR real de cada mes
+- Substituir os dados simulados do grafico por dados reais baseados no historico
+
