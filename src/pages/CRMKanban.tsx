@@ -46,12 +46,12 @@ const KanbanCard = ({ lead }: { lead: Lead }) => {
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8 rounded-lg border border-border/50">
             <AvatarFallback className="rounded-lg bg-secondary text-xs font-bold text-muted-foreground">
-              {getInitials(lead.company_name)}
+              {getInitials(lead.company || lead.name)}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
             <span className="font-semibold text-foreground truncate max-w-[140px]">
-              {lead.company_name || lead.name}
+              {lead.company || lead.name}
             </span>
             <span className="text-xs text-muted-foreground truncate max-w-[140px]">{lead.email}</span>
           </div>
@@ -68,7 +68,7 @@ const KanbanCard = ({ lead }: { lead: Lead }) => {
       <div className="pl-4 pt-2 flex items-center justify-between border-t border-border/40 mt-1">
         <div className="flex items-center gap-1.5 text-xs font-medium text-neon bg-neon/5 px-2 py-1 rounded-md">
           <DollarSign className="h-3 w-3" />
-          {formatCurrency(lead.estimated_value)}
+          {formatCurrency(null)}
         </div>
 
         {/* Placeholder para Avatar de quem está cuidando do lead (Assigned to) */}
@@ -106,7 +106,7 @@ const CRMKanban = () => {
 
   const filteredLeads = leads.filter(
     (lead) =>
-      lead.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lead.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
@@ -163,7 +163,7 @@ const CRMKanban = () => {
             );
 
             // Calcula o total financeiro da coluna
-            const columnTotal = columnLeads.reduce((acc, lead) => acc + (lead.estimated_value || 0), 0);
+            const columnTotal = 0;
 
             return (
               <div key={column.id} className="flex flex-col w-[340px] shrink-0 h-full">
