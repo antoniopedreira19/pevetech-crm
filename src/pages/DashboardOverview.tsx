@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { DollarSign, Users, Target, TrendingUp, Activity, ArrowUpRight, Filter } from "lucide-react";
+import { DollarSign, Users, Target, TrendingUp, Activity } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import {
   Area,
@@ -16,7 +16,6 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -240,7 +239,6 @@ const DashboardOverview = () => {
       <div className="space-y-8 p-8">
         <div className="flex justify-between">
           <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-32" />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
@@ -259,14 +257,6 @@ const DashboardOverview = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Visão geral da performance da Pevetech.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="hidden md:flex">
-            <Filter className="mr-2 h-4 w-4" /> Filtros
-          </Button>
-          <Button className="bg-neon text-neon-foreground hover:bg-neon/90">
-            <ArrowUpRight className="mr-2 h-4 w-4" /> Novo Relatório
-          </Button>
         </div>
       </div>
 
