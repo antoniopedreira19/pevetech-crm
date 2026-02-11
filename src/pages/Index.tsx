@@ -143,7 +143,7 @@ const Index = () => {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto border-border text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors bg-background/50 backdrop-blur-sm"
+                className="w-full sm:w-auto border-border/50 text-foreground font-semibold text-base px-8 hover:bg-white/5 hover:border-border transition-all bg-background/50 backdrop-blur-sm"
               >
                 Por que a Pevetech?
               </Button>
