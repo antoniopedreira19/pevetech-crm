@@ -85,7 +85,7 @@ const NewProjectDrawer = ({
       .filter(item => item !== "");
 
     try {
-      const { error } = await supabase.from("lab_projects").insert([{
+      const { error } = await (supabase as any).from("lab_projects").insert([{
         title: formData.title,
         slug: formData.slug.toLowerCase().replace(/\s+/g, '-'), // Garante que o slug seja válido
         description: formData.description,
@@ -198,7 +198,7 @@ const LabsAdminPage = () => {
   const loadProjects = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("lab_projects")
         .select("*")
         .order("created_at", { ascending: false });
@@ -219,7 +219,7 @@ const LabsAdminPage = () => {
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("lab_projects")
         .update({ is_active: !currentStatus })
         .eq("id", id);
@@ -238,7 +238,7 @@ const LabsAdminPage = () => {
     if (!window.confirm("Tem certeza que deseja apagar este experimento?")) return;
     
     try {
-      const { error } = await supabase.from("lab_projects").delete().eq("id", id);
+      const { error } = await (supabase as any).from("lab_projects").delete().eq("id", id);
       if (error) throw error;
       
       toast.success("Projeto excluído com sucesso.");
