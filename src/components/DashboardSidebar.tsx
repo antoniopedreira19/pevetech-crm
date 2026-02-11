@@ -45,7 +45,7 @@ const DashboardSidebar = () => {
           alt="Pevetech"
           className={cn(
             "object-contain transition-all duration-300 hover:scale-105",
-            isCollapsed ? "h-5 w-5" : "h-24 w-auto",
+            isCollapsed ? "h-10 w-10" : "h-24 w-auto",
           )}
         />
       </div>
