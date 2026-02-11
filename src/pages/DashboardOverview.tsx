@@ -24,7 +24,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 type Client = Tables<"clients">;
 type Lead = Tables<"leads">;
 type Task = Tables<"tasks">;
-type MrrHistory = Tables<"client_mrr_history">;
+
+// Tipagem manual para o histórico enquanto o types.ts não atualiza
+interface MrrHistory {
+  id: string;
+  client_id: string;
+  previous_value: number;
+  new_value: number;
+  reason: string | null;
+  effective_date: string;
+  created_at: string;
+}
 
 // --- Helper Functions ---
 const formatCurrency = (value: number) =>
@@ -35,7 +45,6 @@ const getLast6Months = () => {
   for (let i = 5; i >= 0; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
-    // Definimos para o primeiro dia do mês para facilitar cálculos
     months.push(new Date(d.getFullYear(), d.getMonth(), 1));
   }
   return months;
@@ -53,19 +62,7 @@ const getInitials = (name: string | null) => {
 
 // --- Sub-components ---
 
-const KPICard = ({
-  title,
-  value,
-  trend,
-  icon: Icon,
-  delay,
-}: {
-  title: string;
-  value: string;
-  trend?: string;
-  icon: any;
-  delay: number;
-}) => (
+const KPICard = ({ title, value, icon: Icon, delay }: { title: string; value: string; icon: any; delay: number }) => (
   <Card
     className="relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm hover:bg-card/80 transition-all duration-300 group animate-in fade-in slide-in-from-bottom-4"
     style={{ animationDelay: `${delay}ms` }}
@@ -170,10 +167,8 @@ const DashboardOverview = () => {
         const [c, l, h] = await Promise.all([
           supabase.from("clients").select("*"),
           supabase.from("leads").select("*"),
-          supabase
-            .from("client_mrr_history" as any)
-            .select("*")
-            .order("effective_date", { ascending: true }),
+          // Usamos 'as any' para contornar a falta do tipo no SDK enquanto não há Sync
+          (supabase as any).from("client_mrr_history").select("*").order("effective_date", { ascending: true }),
         ]);
         if (c.data) setClients(c.data);
         if (l.data) setLeads(l.data);
@@ -204,13 +199,8 @@ const DashboardOverview = () => {
 
       const clientsStarted = clients.filter((c) => {
         if (!c.start_date) return false;
-
-        // CORREÇÃO DE TIMEZONE:
-        // Quebramos a string "YYYY-MM-DD" e criamos a data localmente
-        // Isso evita que o JS retroceda a data para o dia anterior devido ao UTC
         const [year, month, day] = c.start_date.split("-").map(Number);
         const startDateAbsolute = new Date(year, month - 1, day, 0, 0, 0);
-
         return startDateAbsolute <= endOfMonth;
       });
 
