@@ -1,14 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Beaker, 
-  Terminal, 
-  Bot, 
-  Database,
-  ExternalLink,
-  Code2
-} from "lucide-react";
+import { ArrowLeft, Beaker, Terminal, Bot, Database, ExternalLink, Code2 } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,7 +16,7 @@ const labProjects = [
     desc: "Plataforma SaaS voltada para o setor de engenharia. Utiliza IA generativa para construir apresentações técnicas e pitches de vendas completos a partir de inputs básicos.",
     icon: Bot,
     stack: ["Lovable", "Supabase", "OpenAI", "React"],
-    link: "#"
+    link: "#",
   },
   {
     id: "recovery-agent",
@@ -35,7 +27,7 @@ const labProjects = [
     desc: "Workflow complexo para gestão de funil e carrinhos abandonados. O agente identifica a quebra de conversão e inicia follow-up imediato via WhatsApp, salvando o status em tempo real no banco de dados.",
     icon: Terminal,
     stack: ["n8n", "PostgreSQL", "WhatsApp API"],
-    link: "#"
+    link: "#",
   },
   {
     id: "finance-parser",
@@ -46,8 +38,8 @@ const labProjects = [
     desc: "Sistema de ingestão de dados que lê, limpa e padroniza planilhas financeiras complexas de múltiplos CNPJs, injetando os dados estruturados diretamente em views do Supabase para o Power BI.",
     icon: Database,
     stack: ["Python", "Supabase", "Pandas", "Power BI"],
-    link: "#"
-  }
+    link: "#",
+  },
 ];
 
 const fadeUp = {
@@ -58,25 +50,23 @@ const fadeUp = {
 const LabsPage = () => {
   return (
     <div className="min-h-screen bg-background selection:bg-neon/20 selection:text-neon">
-      
       {/* Background Matrix/Grid Effect */}
       <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       <div className="fixed top-[-20%] left-[-10%] w-[50%] h-[50%] bg-neon/10 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Nav */}
       <nav className="fixed top-0 w-full z-50 glass border-b border-border/10">
-        <div className="container mx-auto flex items-center justify-between py-4 px-6">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <ArrowLeft size={20} className="text-muted-foreground mr-2" />
-            <img src={pevetechLogo} alt="Pevetech" className="h-10" />
-            <div className="h-4 w-[1px] bg-border mx-2" />
-            <span className="font-display font-semibold text-neon tracking-widest flex items-center gap-2">
-              <Beaker size={16} /> LABS
-            </span>
+        <div className="container mx-auto flex items-center justify-between py-2 px-6">
+          <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <ArrowLeft size={20} className="text-muted-foreground mr-2 group-hover:text-foreground transition-colors" />
+            <img src={pevetechLogo} alt="Pevetech" className="h-20" />
           </Link>
-          <a href="mailto:contato@pevetech.com" className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden md:block">
-            Seja um Beta Tester
-          </a>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-neon/20 bg-neon/5 text-neon font-display font-semibold tracking-widest text-sm shadow-[0_0_10px_rgba(0,255,128,0.05)]">
+              <Beaker size={16} /> LABS
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -88,16 +78,17 @@ const LabsPage = () => {
               <Code2 size={16} className="text-neon" />
               <span className="text-muted-foreground">Pesquisa & Desenvolvimento</span>
             </div>
-            
+
             <h1 className="text-5xl md:text-7xl font-bold text-foreground mb-6 tracking-tight">
               Onde o futuro é <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon to-emerald-400">
                 escrito em código.
               </span>
             </h1>
-            
+
             <p className="text-lg text-muted-foreground max-w-2xl leading-relaxed mb-10">
-              O Pevetech Labs é a nossa divisão de inovação extrema. É aqui que testamos LLMs, construímos microsserviços e incubamos produtos SaaS internos antes de chegarem ao mercado.
+              O Pevetech Labs é a nossa divisão de inovação extrema. É aqui que testamos LLMs, construímos
+              microsserviços e incubamos produtos SaaS internos antes de chegarem ao mercado.
             </p>
           </motion.div>
         </div>
@@ -130,26 +121,28 @@ const LabsPage = () => {
                   </div>
 
                   <div className="relative z-10">
-                    <p className="text-xs font-medium text-neon tracking-wider uppercase mb-2">
-                      {project.category}
-                    </p>
+                    <p className="text-xs font-medium text-neon tracking-wider uppercase mb-2">{project.category}</p>
                     <h3 className="text-2xl font-bold mb-3">{project.title}</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed mb-8">
-                      {project.desc}
-                    </p>
+                    <p className="text-muted-foreground text-sm leading-relaxed mb-8">{project.desc}</p>
                   </div>
                 </div>
 
                 <div className="relative z-10">
                   <div className="flex flex-wrap gap-2 mb-6">
-                    {project.stack.map(tech => (
-                      <span key={tech} className="px-2.5 py-1 rounded-md bg-secondary/50 text-secondary-foreground text-[11px] font-mono border border-border/40">
+                    {project.stack.map((tech) => (
+                      <span
+                        key={tech}
+                        className="px-2.5 py-1 rounded-md bg-secondary/50 text-secondary-foreground text-[11px] font-mono border border-border/40"
+                      >
                         {tech}
                       </span>
                     ))}
                   </div>
-                  
-                  <Button variant="ghost" className="w-full justify-between group/btn hover:bg-neon hover:text-neon-foreground transition-all border border-border/50 hover:border-transparent">
+
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-between group/btn hover:bg-neon hover:text-neon-foreground transition-all border border-border/50 hover:border-transparent"
+                  >
                     Explorar Projeto
                     <ExternalLink size={16} className="opacity-50 group-hover/btn:opacity-100 transition-opacity" />
                   </Button>
@@ -176,7 +169,6 @@ const LabsPage = () => {
           </div>
         </div>
       </section>
-
     </div>
   );
 };
