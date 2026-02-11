@@ -415,7 +415,7 @@ const ClientsPage = () => {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleInactivate(row.original)} className="text-red-500">
-                  <UserX className="mr-2 h-4 w-4" /> Inativar (Zerar MRR)
+                  <UserX className="mr-2 h-4 w-4" /> Inativar
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
