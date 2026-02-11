@@ -146,6 +146,7 @@ const ClientFormDrawer = ({
   client?: Client | null;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mrrReason, setMrrReason] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     company_name: "",
@@ -157,6 +158,8 @@ const ClientFormDrawer = ({
     logo_url: "",
     setor: "",
   });
+
+  const mrrChanged = client ? formData.monthly_value !== (client.monthly_value || 0) : false;
 
   useEffect(() => {
     if (client) {
@@ -171,22 +174,48 @@ const ClientFormDrawer = ({
         logo_url: client.logo_url || "",
         setor: client.setor || "",
       });
+      setMrrReason("");
     }
   }, [client, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mrrChanged && !mrrReason.trim()) {
+      toast.error("Informe o motivo da alteração do MRR.");
+      return;
+    }
     setIsSubmitting(true);
     try {
       const payload = { ...formData, status: formData.status as any };
 
       if (client) {
+        // Se MRR mudou, registrar no histórico
+        if (mrrChanged) {
+          const { error: histError } = await supabase.from("client_mrr_history" as any).insert([{
+            client_id: client.id,
+            previous_value: client.monthly_value || 0,
+            new_value: formData.monthly_value,
+            reason: mrrReason.trim(),
+            effective_date: new Date().toISOString(),
+          }]);
+          if (histError) throw histError;
+        }
         const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
         if (error) throw error;
         toast.success("Cliente atualizado!");
       } else {
-        const { error } = await supabase.from("clients").insert([payload]);
+        const { data: newClient, error } = await supabase.from("clients").insert([payload]).select().single();
         if (error) throw error;
+        // Registro inicial de MRR
+        if (newClient) {
+          await supabase.from("client_mrr_history" as any).insert([{
+            client_id: newClient.id,
+            previous_value: 0,
+            new_value: formData.monthly_value,
+            reason: "Cadastro inicial",
+            effective_date: new Date().toISOString(),
+          }]);
+        }
         toast.success("Cliente cadastrado!");
       }
       onSuccess();
@@ -291,6 +320,21 @@ const ClientFormDrawer = ({
                 </Select>
               </div>
             </div>
+            {mrrChanged && (
+              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                <Label className="text-amber-400">Motivo da alteração do MRR *</Label>
+                <Input
+                  value={mrrReason}
+                  onChange={(e) => setMrrReason(e.target.value)}
+                  placeholder="Ex: Novo módulo contratado, Reajuste anual..."
+                  className="bg-card/50 border-amber-500/30 focus-visible:ring-amber-500/50"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  De {formatCurrency(client?.monthly_value || 0)} → {formatCurrency(formData.monthly_value)}
+                </p>
+              </div>
+            )}
           </div>
           <SheetFooter className="p-6 border-t border-border/50 sticky bottom-0 bg-background/95">
             <Button type="submit" className="w-full bg-neon text-neon-foreground">

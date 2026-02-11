@@ -171,17 +171,21 @@ const DashboardOverview = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
 
+  const [mrrHistory, setMrrHistory] = useState<any[]>([]);
+
   useEffect(() => {
     const load = async () => {
       try {
-        const [c, l, t] = await Promise.all([
+        const [c, l, t, h] = await Promise.all([
           supabase.from("clients").select("*"),
           supabase.from("leads").select("*"),
           supabase.from("tasks").select("*"),
+          supabase.from("client_mrr_history" as any).select("*").order("effective_date", { ascending: true }),
         ]);
         if (c.data) setClients(c.data);
         if (l.data) setLeads(l.data);
         if (t.data) setTasks(t.data);
+        if (h.data) setMrrHistory(h.data);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
       } finally {
@@ -211,19 +215,26 @@ const DashboardOverview = () => {
   const chartData = useMemo(() => {
     const months = getLast6Months();
     return months.map((date) => {
-      const monthKey = date.toISOString().slice(0, 7); // YYYY-MM
-      const monthlyRevenue = clients
-        .filter((c) => c.created_at && c.created_at <= date.toISOString() && c.status === "active")
-        .reduce((sum, c) => sum + (c.monthly_value || 0), 0);
-
-      const displayValue = monthlyRevenue > 0 ? monthlyRevenue : metrics.mrr * (0.5 + Math.random() * 0.5);
+      // Para cada mês, calcular o MRR total baseado no histórico
+      // O MRR vigente de cada cliente no final do mês é o último new_value antes daquela data
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+      const clientIds = [...new Set(mrrHistory.map((h: any) => h.client_id))];
+      
+      let totalMrr = 0;
+      for (const clientId of clientIds) {
+        const clientEntries = mrrHistory
+          .filter((h: any) => h.client_id === clientId && new Date(h.effective_date) <= endOfMonth);
+        if (clientEntries.length > 0) {
+          totalMrr += Number(clientEntries[clientEntries.length - 1].new_value) || 0;
+        }
+      }
 
       return {
         name: date.toLocaleDateString("pt-BR", { month: "short" }),
-        value: displayValue,
+        value: totalMrr,
       };
     });
-  }, [clients, metrics.mrr]);
+  }, [mrrHistory]);
 
   const funnelData = useMemo(() => {
     const statusCounts = leads.reduce(
