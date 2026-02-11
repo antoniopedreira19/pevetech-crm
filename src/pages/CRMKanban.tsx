@@ -4,10 +4,15 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Search, Plus, MoreHorizontal, Calendar, DollarSign, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 
 // --- Types ---
 type Lead = Tables<"leads">;
@@ -87,22 +92,59 @@ const CRMKanban = () => {
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isNewDealOpen, setIsNewDealOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newDeal, setNewDeal] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    message: "",
+    status: "new" as string,
+  });
+
+  const fetchLeads = async () => {
+    try {
+      const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      setLeads(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar leads:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchLeads = async () => {
-      try {
-        const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setLeads(data || []);
-      } catch (error) {
-        console.error("Erro ao carregar leads:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLeads();
   }, []);
+
+  const handleCreateDeal = async () => {
+    if (!newDeal.name.trim()) {
+      toast.error("Informe o nome do contato.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from("leads").insert([{
+        name: newDeal.name,
+        email: newDeal.email || null,
+        phone: newDeal.phone || null,
+        company: newDeal.company || null,
+        message: newDeal.message || null,
+        status: newDeal.status as any,
+      }]);
+      if (error) throw error;
+      toast.success("Deal criado com sucesso!");
+      setNewDeal({ name: "", email: "", phone: "", company: "", message: "", status: "new" });
+      setIsNewDealOpen(false);
+      fetchLeads();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const filteredLeads = leads.filter(
     (lead) =>
@@ -147,7 +189,7 @@ const CRMKanban = () => {
               className="pl-9 bg-card/30 border-border/50 focus-visible:ring-neon rounded-full"
             />
           </div>
-          <Button className="bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20 rounded-full px-6">
+          <Button onClick={() => setIsNewDealOpen(true)} className="bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20 rounded-full px-6">
             <Plus className="mr-2 h-4 w-4" /> Novo Deal
           </Button>
         </div>
@@ -200,6 +242,92 @@ const CRMKanban = () => {
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+      {/* New Deal Dialog */}
+      <Dialog open={isNewDealOpen} onOpenChange={setIsNewDealOpen}>
+        <DialogContent className="sm:max-w-md bg-background border-border/50">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="text-neon" size={20} />
+              Novo Deal
+            </DialogTitle>
+            <DialogDescription>Cadastre uma nova oportunidade no pipeline.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome do Contato *</Label>
+              <Input
+                value={newDeal.name}
+                onChange={(e) => setNewDeal({ ...newDeal, name: e.target.value })}
+                placeholder="João Silva"
+                className="bg-card/50"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Empresa</Label>
+              <Input
+                value={newDeal.company}
+                onChange={(e) => setNewDeal({ ...newDeal, company: e.target.value })}
+                placeholder="Empresa XYZ"
+                className="bg-card/50"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>E-mail</Label>
+                <Input
+                  type="email"
+                  value={newDeal.email}
+                  onChange={(e) => setNewDeal({ ...newDeal, email: e.target.value })}
+                  placeholder="email@empresa.com"
+                  className="bg-card/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input
+                  value={newDeal.phone}
+                  onChange={(e) => setNewDeal({ ...newDeal, phone: e.target.value })}
+                  placeholder="(71) 99999-9999"
+                  className="bg-card/50"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Etapa Inicial</Label>
+              <Select value={newDeal.status} onValueChange={(val) => setNewDeal({ ...newDeal, status: val })}>
+                <SelectTrigger className="bg-card/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {KANBAN_COLUMNS.map((col) => (
+                    <SelectItem key={col.id} value={col.id}>{col.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea
+                value={newDeal.message}
+                onChange={(e) => setNewDeal({ ...newDeal, message: e.target.value })}
+                placeholder="Contexto da oportunidade..."
+                className="bg-card/50 min-h-[80px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsNewDealOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={handleCreateDeal}
+              disabled={isSubmitting || !newDeal.name.trim()}
+              className="bg-neon text-neon-foreground"
+            >
+              {isSubmitting ? "Salvando..." : "Criar Deal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
