@@ -6,15 +6,13 @@ import {
   Search,
   MoreHorizontal,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Plus,
-  Filter,
   Building2,
   User,
-  Mail,
-  Phone,
   Briefcase,
   DollarSign,
-  Calendar,
 } from "lucide-react";
 import {
   ColumnDef,
@@ -121,7 +119,7 @@ const NewClientDrawer = ({
           company_name: formData.company_name,
           email: formData.email,
           phone: formData.phone,
-          status: formData.status as any, // Forçando o cast para o enum do Supabase
+          status: formData.status as any,
           start_date: formData.start_date,
           monthly_value: formData.monthly_value,
           logo_url: formData.logo_url,
@@ -132,10 +130,9 @@ const NewClientDrawer = ({
       if (error) throw error;
 
       toast.success("Cliente cadastrado com sucesso!");
-      onSuccess(); // Recarrega a tabela
-      onOpenChange(false); // Fecha o modal
+      onSuccess();
+      onOpenChange(false);
 
-      // Reseta o formulário
       setFormData({
         name: "",
         company_name: "",
@@ -343,8 +340,7 @@ const ClientsPage = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  // States para os modais
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Modal de criação
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const loadClients = async () => {
     setLoading(true);
@@ -373,16 +369,25 @@ const ClientsPage = () => {
     () => [
       {
         id: "company_info",
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            className="p-0 hover:bg-transparent"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Empresa
-            <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
-          </Button>
-        ),
+        header: ({ column }) => {
+          const isSorted = column.getIsSorted();
+          return (
+            <Button
+              variant="ghost"
+              className="p-0 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-start h-auto w-full"
+              onClick={() => column.toggleSorting(isSorted === "asc")}
+            >
+              Empresa
+              {isSorted === "asc" ? (
+                <ArrowUp className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+              ) : isSorted === "desc" ? (
+                <ArrowDown className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+              ) : (
+                <ArrowUpDown className="ml-2 h-4 w-4 opacity-30 group-hover:opacity-70 transition-opacity" />
+              )}
+            </Button>
+          );
+        },
         accessorFn: (row) => row.company_name,
         cell: ({ row }) => {
           const client = row.original;
@@ -417,7 +422,7 @@ const ClientsPage = () => {
         header: "Contato Principal",
         accessorFn: (row) => row.name,
         cell: ({ row }) => (
-          <div className="flex flex-col">
+          <div className="flex flex-col justify-center">
             <span className="text-sm font-medium">{row.original.name}</span>
             <span className="text-xs text-muted-foreground truncate">{row.original.email || "Sem e-mail"}</span>
           </div>
@@ -425,18 +430,27 @@ const ClientsPage = () => {
       },
       {
         accessorKey: "monthly_value",
-        header: ({ column }) => (
-          <div className="text-right">
-            <Button
-              variant="ghost"
-              className="p-0 hover:bg-transparent"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-              MRR / Valor
-              <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />
-            </Button>
-          </div>
-        ),
+        header: ({ column }) => {
+          const isSorted = column.getIsSorted();
+          return (
+            <div className="flex justify-end w-full">
+              <Button
+                variant="ghost"
+                className="p-0 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-end h-auto"
+                onClick={() => column.toggleSorting(isSorted === "asc")}
+              >
+                MRR / Valor
+                {isSorted === "asc" ? (
+                  <ArrowUp className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+                ) : isSorted === "desc" ? (
+                  <ArrowDown className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+                ) : (
+                  <ArrowUpDown className="ml-2 h-4 w-4 opacity-30 group-hover:opacity-70 transition-opacity" />
+                )}
+              </Button>
+            </div>
+          );
+        },
         cell: ({ row }) => {
           const value = parseFloat(row.getValue("monthly_value"));
           return <div className="text-right font-medium font-mono text-neon">{formatCurrency(value)}</div>;
@@ -446,7 +460,7 @@ const ClientsPage = () => {
         id: "actions",
         cell: ({ row }) => {
           return (
-            <div className="text-right" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end w-full" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -558,8 +572,9 @@ const ClientsPage = () => {
                     className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative"
                   >
                     <td className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity"></td>
+                    {/* Correção do padding para px-4 py-3 */}
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="p-3 align-middle">
+                      <td key={cell.id} className="px-4 py-3 align-middle">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
