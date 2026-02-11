@@ -236,7 +236,7 @@ const DashboardOverview = () => {
     return months.map((monthDate) => {
       const isFuture = monthDate > currentMonth;
       const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
-      const referenceEnd = isFuture ? new Date() : endOfMonth;
+      const referenceEnd = endOfMonth;
 
       const clientsStarted = clients.filter((c) => {
         if (!c.start_date) return false;
