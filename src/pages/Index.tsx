@@ -158,7 +158,7 @@ const Index = () => {
             </a>
           </motion.div>
 
-          {/* Social Proof */}
+          {/* Social Proof - CORRIGIDO AQUI */}
           <motion.div className="mt-24 w-full" initial="hidden" animate="visible" variants={fadeUp} custom={4}>
             <p className="text-[11px] font-display uppercase tracking-[0.2em] text-muted-foreground mb-8">
               Tecnologia por trás de:
@@ -175,7 +175,8 @@ const Index = () => {
                   key={client.alt}
                   className="w-16 h-16 md:w-20 md:h-20 rounded-full border border-border/50 bg-card/50 flex items-center justify-center opacity-60 hover:opacity-100 hover:border-neon/50 hover:shadow-[0_0_15px_rgba(0,255,128,0.1)] transition-all duration-300 cursor-default overflow-hidden"
                 >
-                  <img src={client.src} alt={client.alt} className="w-full h-full object-contain p-2" />
+                  {/* ALTERADO DE object-contain p-2 PARA object-cover */}
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
