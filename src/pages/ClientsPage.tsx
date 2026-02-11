@@ -220,11 +220,6 @@ const ClientsPage = () => {
               </Avatar>
               <div className="flex flex-col">
                 <span className="font-semibold text-foreground text-[15px]">{client.company_name}</span>
-                {client.website && (
-                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                    {client.website.replace("https://", "")}
-                  </span>
-                )}
               </div>
             </div>
           );
