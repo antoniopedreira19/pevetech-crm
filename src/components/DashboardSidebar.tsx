@@ -20,11 +20,17 @@ const DashboardSidebar = () => {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-sidebar border-r border-sidebar-border flex flex-col">
-      <div className="p-6 flex items-center gap-2">
-        <img src={pevetechLogo} alt="Pevetech" className="h-14" />
+    <aside className="w-64 min-h-screen bg-sidebar border-r border-border/50 flex flex-col relative z-20">
+      {/* Container da Logo - Centralizado e Maior */}
+      <div className="pt-10 pb-8 px-4 flex justify-center items-center">
+        <img
+          src={pevetechLogo}
+          alt="Pevetech"
+          className="h-24 w-auto object-contain transition-transform duration-300 hover:scale-105"
+        />
       </div>
-      <nav className="flex-1 px-3 space-y-1">
+
+      <nav className="flex-1 px-4 space-y-2 mt-2">
         {links.map((link) => (
           <NavLink
             key={link.to}
@@ -32,24 +38,25 @@ const DashboardSidebar = () => {
             end={link.to === "/dashboard"}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors",
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-200 group",
                 isActive
-                  ? "bg-sidebar-accent text-neon font-medium"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  ? "bg-neon/10 text-neon font-semibold shadow-sm border border-neon/20"
+                  : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground",
               )
             }
           >
-            <link.icon size={18} />
+            <link.icon size={20} className="transition-colors group-hover:text-current" />
             {link.label}
           </NavLink>
         ))}
       </nav>
-      <div className="p-3">
+
+      <div className="p-4 mt-auto border-t border-border/50">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:bg-sidebar-accent/50 transition-colors w-full"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors w-full group"
         >
-          <LogOut size={18} />
+          <LogOut size={20} className="group-hover:text-red-500 transition-colors" />
           Sair
         </button>
       </div>
