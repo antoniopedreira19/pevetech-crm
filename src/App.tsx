@@ -12,6 +12,8 @@ import ClientsPage from "./pages/ClientsPage";
 import TasksPage from "./pages/TasksPage";
 import DiagnosticPage from "./pages/DiagnosticPage";
 import NotFound from "./pages/NotFound";
+// IMPORTAÇÃO DA NOVA PÁGINA
+import LabsPage from "./pages/LabsPage";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,10 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/diagnostico" element={<DiagnosticPage />} />
+
+          {/* NOVA ROTA ADICIONADA AQUI */}
+          <Route path="/labs" element={<LabsPage />} />
+
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardOverview />} />
             <Route path="crm" element={<CRMKanban />} />
