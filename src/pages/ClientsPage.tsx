@@ -283,7 +283,7 @@ const NewClientDrawer = ({
                     min="0"
                     value={formData.monthly_value}
                     onChange={(e) => setFormData({ ...formData, monthly_value: parseFloat(e.target.value) || 0 })}
-                    className="bg-card/50 font-mono text-neon"
+                    className="bg-card/50 font-mono text-neon [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -565,7 +565,7 @@ const ClientsPage = () => {
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="h-11 px-4 align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]"
+                      className="h-11 px-4 text-left align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]"
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
@@ -582,7 +582,7 @@ const ClientsPage = () => {
                   >
                     <td className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity"></td>
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="p-4 align-middle">
+                      <td key={cell.id} className="p-4 align-middle text-left">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
