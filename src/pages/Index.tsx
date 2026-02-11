@@ -78,11 +78,8 @@ const Index = () => {
             >
               Diferenciais
             </a>
-            <a
-              href="#contato"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Contato
+            <a href="#diagnostico" className="text-sm font-medium text-neon hover:text-neon/80 transition-colors">
+              Diagnóstico (IA)
             </a>
           </div>
         </div>
@@ -134,12 +131,12 @@ const Index = () => {
             variants={fadeUp}
             custom={3}
           >
-            <a href="#contato" className="w-full sm:w-auto">
+            <a href="#diagnostico" className="w-full sm:w-auto">
               <Button
                 size="lg"
                 className="w-full sm:w-auto bg-neon text-neon-foreground font-semibold text-base px-8 hover:bg-neon/90 shadow-lg shadow-neon/20 transition-all hover:scale-105"
               >
-                Agendar Diagnóstico <ArrowRight className="ml-2" size={18} />
+                Iniciar Diagnóstico com IA <ArrowRight className="ml-2" size={18} />
               </Button>
             </a>
             <a href="#diferenciais" className="w-full sm:w-auto">
@@ -237,9 +234,6 @@ const Index = () => {
             variants={fadeUp}
             custom={0}
           >
-            <span className="inline-block px-3 py-1 rounded-full bg-neon/10 text-neon text-xs font-display mb-4 tracking-wider border border-neon/20">
-              NOSSO FOCO
-            </span>
             <h2 className="text-3xl md:text-4xl font-bold">
               Como Geramos <span className="text-neon">Valor</span>
             </h2>
@@ -274,8 +268,8 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Contato */}
-      <section id="contato" className="py-24 relative z-10">
+      {/* Contato -> Diagnóstico */}
+      <section id="diagnostico" className="py-24 relative z-10">
         <div className="container mx-auto px-6">
           <motion.h2
             className="text-3xl md:text-4xl font-bold text-center mb-4"
@@ -295,7 +289,8 @@ const Index = () => {
             variants={fadeUp}
             custom={1}
           >
-            Pare de adivinhar onde está o problema. Nossa IA analisa seu relato e desenha a solução técnica imediata.
+            Pare de adivinhar onde está o problema. Nossa IA analisa o seu cenário e desenha a solução técnica
+            imediatamente.
           </motion.p>
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} custom={2}>
             <AIDiagnosticForm />
