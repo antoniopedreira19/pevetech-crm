@@ -14,6 +14,9 @@ import {
   User,
   Briefcase,
   DollarSign,
+  Phone,
+  Pencil,
+  UserX,
 } from "lucide-react";
 import {
   ColumnDef,
@@ -43,8 +46,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
-
-
 // --- Types ---
 type Client = Tables<"clients">;
 
@@ -52,6 +53,14 @@ type Client = Tables<"clients">;
 const formatCurrency = (value: number | null) => {
   if (value === null || value === undefined) return "-";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+};
+
+const formatPhoneNumber = (phone: string | null) => {
+  if (!phone) return "Sem telefone";
+  const cleaned = ("" + phone).replace(/\D/g, "");
+  const match = cleaned.match(/^(\d{2})(\d{5})(\d{4})$/);
+  if (match) return `(${match[1]}) ${match[2]}-${match[3]}`;
+  return phone;
 };
 
 const getInitials = (name: string | null) => {
@@ -66,35 +75,21 @@ const getInitials = (name: string | null) => {
 
 type Align = "left" | "center" | "right";
 
-const alignTextClass: Record<Align, string> = {
-  left: "text-left",
-  center: "text-center",
-  right: "text-right",
-};
-
+const alignTextClass: Record<Align, string> = { left: "text-left", center: "text-center", right: "text-right" };
 const alignJustifyClass: Record<Align, string> = {
   left: "justify-start",
   center: "justify-center",
   right: "justify-end",
 };
 
-const SortableHeader = ({
-  label,
-  column,
-  align,
-}: {
-  label: string;
-  column: any;
-  align: Align;
-}) => {
+const SortableHeader = ({ label, column, align }: { label: string; column: any; align: Align }) => {
   const isSorted = column.getIsSorted();
-
   return (
     <Button
       variant="ghost"
       onClick={() => column.toggleSorting(isSorted === "asc")}
       className={cn(
-        "h-8 px-0 w-full hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors",
+        "h-8 px-0 w-full hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground",
         "flex",
         alignJustifyClass[align],
       )}
@@ -111,7 +106,6 @@ const SortableHeader = ({
   );
 };
 
-// --- Status Badge Component ---
 const StatusBadge = ({ status }: { status: string | null }) => {
   const styles = {
     active: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
@@ -119,26 +113,26 @@ const StatusBadge = ({ status }: { status: string | null }) => {
     lead: "bg-amber-500/10 text-amber-500 border-amber-500/20",
     churned: "bg-red-500/10 text-red-500 border-red-500/20",
   };
-
   const badgeStyle = styles[status as keyof typeof styles] || styles.lead;
   const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : "Desconhecido";
-
   return (
-    <Badge variant="outline" className={`font-medium border ${badgeStyle} transition-colors`}>
+    <Badge variant="outline" className={`font-medium border ${badgeStyle}`}>
       {label}
     </Badge>
   );
 };
 
-// --- Formulário de Novo Cliente (Drawer) ---
-const NewClientDrawer = ({
+// --- Formulário de Cliente (Drawer Reutilizável) ---
+const ClientFormDrawer = ({
   open,
   onOpenChange,
   onSuccess,
+  client,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  client?: Client | null;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -153,36 +147,20 @@ const NewClientDrawer = ({
     setor: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const { error } = await supabase.from("clients").insert([
-        {
-          name: formData.name,
-          company_name: formData.company_name,
-          email: formData.email,
-          phone: formData.phone,
-          status: formData.status as any,
-          start_date: formData.start_date,
-          monthly_value: formData.monthly_value,
-          logo_url: formData.logo_url,
-          setor: formData.setor,
-        },
-      ]);
-
-      if (error) throw error;
-
-      toast.success("Cliente cadastrado com sucesso!");
-      onSuccess();
-      onOpenChange(false);
-
+  useEffect(() => {
+    if (client) {
+      setFormData({
+        name: client.name || "",
+        company_name: client.company_name || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        status: client.status || "active",
+        start_date: client.start_date || new Date().toISOString().split("T")[0],
+        monthly_value: client.monthly_value || 0,
+        logo_url: client.logo_url || "",
+        setor: client.setor || "",
+      });
+    } else {
       setFormData({
         name: "",
         company_name: "",
@@ -194,9 +172,26 @@ const NewClientDrawer = ({
         logo_url: "",
         setor: "",
       });
+    }
+  }, [client, open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if (client) {
+        const { error } = await supabase.from("clients").update(formData).eq("id", client.id);
+        if (error) throw error;
+        toast.success("Cliente atualizado com sucesso!");
+      } else {
+        const { error } = await supabase.from("clients").insert([formData]);
+        if (error) throw error;
+        toast.success("Cliente cadastrado com sucesso!");
+      }
+      onSuccess();
+      onOpenChange(false);
     } catch (error: any) {
-      console.error("Erro ao salvar cliente:", error);
-      toast.error(error.message || "Erro ao cadastrar o cliente. Verifique os dados.");
+      toast.error(error.message || "Erro ao salvar dados.");
     } finally {
       setIsSubmitting(false);
     }
@@ -209,172 +204,102 @@ const NewClientDrawer = ({
           <SheetHeader className="p-6 pb-4 border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur z-10">
             <SheetTitle className="text-2xl font-bold flex items-center gap-2">
               <Building2 className="h-6 w-6 text-neon" />
-              Novo Cliente
+              {client ? "Editar Cliente" : "Novo Cliente"}
             </SheetTitle>
-            <SheetDescription>
-              Preencha os dados abaixo para adicionar uma nova empresa ao seu portfólio.
-            </SheetDescription>
           </SheetHeader>
-
-          <div className="p-6 space-y-8 flex-1">
-            {/* Seção 1: Dados da Empresa */}
+          <div className="p-6 space-y-6 flex-1">
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Briefcase className="h-4 w-4" /> Informações da Empresa
-              </h3>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="company_name">Nome da Empresa *</Label>
-                  <Input
-                    id="company_name"
-                    name="company_name"
-                    required
-                    value={formData.company_name}
-                    onChange={handleChange}
-                    className="bg-card/50"
-                    placeholder="Ex: Pevetech S.A."
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="setor">Setor / Nicho</Label>
-                    <Input
-                      id="setor"
-                      name="setor"
-                      value={formData.setor}
-                      onChange={handleChange}
-                      className="bg-card/50"
-                      placeholder="Ex: Tecnologia"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="logo_url">URL da Logo</Label>
-                    <Input
-                      id="logo_url"
-                      name="logo_url"
-                      value={formData.logo_url}
-                      onChange={handleChange}
-                      className="bg-card/50"
-                      placeholder="https://..."
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Separator className="bg-border/40" />
-
-            {/* Seção 2: Contato Principal */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <User className="h-4 w-4" /> Contato Principal
-              </h3>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="name">Nome do Responsável *</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    required
-                    value={formData.name}
-                    onChange={handleChange}
-                    className="bg-card/50"
-                    placeholder="Ex: Antonio Pedreira"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="email">E-mail</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      className="bg-card/50"
-                      placeholder="contato@empresa.com"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="bg-card/50"
-                      placeholder="(71) 99999-9999"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Separator className="bg-border/40" />
-
-            {/* Seção 3: Dados do Contrato */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <DollarSign className="h-4 w-4" /> Contrato & Status
-              </h3>
+              <Label>Nome da Empresa *</Label>
+              <Input
+                required
+                value={formData.company_name}
+                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                className="bg-card/50"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label htmlFor="monthly_value">Valor Mensal (MRR)</Label>
+                  <Label>Setor</Label>
                   <Input
-                    id="monthly_value"
-                    name="monthly_value"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.monthly_value}
-                    onChange={(e) => setFormData({ ...formData, monthly_value: parseFloat(e.target.value) || 0 })}
-                    className="bg-card/50 font-mono text-neon [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                    value={formData.setor}
+                    onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
+                    className="bg-card/50"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="start_date">Data de Início</Label>
+                  <Label>Logo URL</Label>
                   <Input
-                    id="start_date"
-                    name="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={handleChange}
-                    className="bg-card/50 text-muted-foreground"
+                    value={formData.logo_url}
+                    onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                    className="bg-card/50"
                   />
-                </div>
-                <div className="space-y-1 col-span-2">
-                  <Label htmlFor="status">Status do Cliente</Label>
-                  <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
-                    <SelectTrigger className="bg-card/50">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Ativo (Gerando Receita)</SelectItem>
-                      <SelectItem value="lead">Lead (Em Negociação)</SelectItem>
-                      <SelectItem value="inactive">Inativo (Pausado)</SelectItem>
-                      <SelectItem value="churned">Cancelado (Churn)</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </div>
+            <Separator className="bg-border/40" />
+            <div className="space-y-4">
+              <Label>Nome do Responsável *</Label>
+              <Input
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="bg-card/50"
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label>E-mail</Label>
+                  <Input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="bg-card/50"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Telefone</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="bg-card/50"
+                    placeholder="(71) 99999-9999"
+                  />
+                </div>
+              </div>
+            </div>
+            <Separator className="bg-border/40" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label>MRR (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.monthly_value}
+                  onChange={(e) => setFormData({ ...formData, monthly_value: parseFloat(e.target.value) || 0 })}
+                  className="bg-card/50 font-mono text-neon"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
+                  <SelectTrigger className="bg-card/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                    <SelectItem value="inactive">Inativo</SelectItem>
+                    <SelectItem value="churned">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
-
-          <SheetFooter className="p-6 border-t border-border/50 bg-background/95 sticky bottom-0 z-10">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+          <SheetFooter className="p-6 border-t border-border/50 bg-background/95 sticky bottom-0">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full sm:w-auto bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20"
-            >
-              {isSubmitting ? "Salvando..." : "Salvar Cliente"}
+            <Button type="submit" disabled={isSubmitting} className="bg-neon text-neon-foreground hover:bg-neon/90">
+              {isSubmitting ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </SheetFooter>
         </form>
@@ -389,8 +314,8 @@ const ClientsPage = () => {
   const [data, setData] = useState<Client[]>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   const loadClients = async () => {
     setLoading(true);
@@ -399,12 +324,10 @@ const ClientsPage = () => {
         .from("clients")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
       setData(clients || []);
     } catch (error) {
-      console.error("Erro ao carregar clientes:", error);
-      toast.error("Não foi possível carregar a lista de clientes.");
+      toast.error("Erro ao carregar clientes.");
     } finally {
       setLoading(false);
     }
@@ -414,95 +337,102 @@ const ClientsPage = () => {
     loadClients();
   }, []);
 
-  // --- Table Column Definitions ---
+  const handleInactivate = async (client: Client) => {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ status: "inactive", monthly_value: 0 })
+        .eq("id", client.id);
+      if (error) throw error;
+      toast.success(`${client.company_name} inativado (MRR zerado).`);
+      loadClients();
+    } catch (error) {
+      toast.error("Erro ao inativar cliente.");
+    }
+  };
+
   const columns = useMemo<ColumnDef<Client>[]>(
     () => [
       {
         id: "company_info",
         accessorFn: (row) => row.company_name,
-        meta: { align: "left" },
         header: ({ column }) => <SortableHeader label="Empresa" column={column} align="left" />,
-        cell: ({ row }) => {
-          const client = row.original;
-          return (
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9 border border-border/50">
-                <AvatarImage src={client.logo_url || undefined} />
-                <AvatarFallback className="bg-secondary text-xs font-medium text-muted-foreground">
-                  {getInitials(client.company_name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-foreground text-[15px] truncate">{client.company_name}</span>
-                {client.setor && <span className="text-xs text-muted-foreground truncate">{client.setor}</span>}
-              </div>
+        cell: ({ row }) => (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9 border border-border/50">
+              <AvatarImage src={row.original.logo_url || undefined} />
+              <AvatarFallback className="bg-secondary text-xs font-medium">
+                {getInitials(row.original.company_name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0">
+              <span className="font-semibold text-foreground text-[15px] truncate">{row.original.company_name}</span>
+              <span className="text-xs text-muted-foreground truncate">{row.original.setor || "Sem setor"}</span>
             </div>
-          );
-        },
+          </div>
+        ),
       },
       {
         accessorKey: "status",
-        meta: { align: "center" },
         header: "Status",
         cell: ({ row }) => (
           <div className="flex justify-center">
             <StatusBadge status={row.getValue("status")} />
           </div>
         ),
-        filterFn: (row, id, value) => {
-          return value.includes(row.getValue(id));
-        },
       },
       {
         id: "contact_info",
-        accessorFn: (row) => row.name,
-        meta: { align: "left" },
         header: "Contato Principal",
         cell: ({ row }) => (
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-medium truncate">{row.original.name}</span>
-            <span className="text-xs text-muted-foreground truncate">{row.original.email || "Sem e-mail"}</span>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Phone className="h-3 w-3" /> {formatPhoneNumber(row.original.phone)}
+            </div>
           </div>
         ),
       },
       {
         accessorKey: "monthly_value",
-        meta: { align: "right" },
         header: ({ column }) => <SortableHeader label="MRR / Valor" column={column} align="right" />,
-        cell: ({ row }) => {
-          const value = parseFloat(row.getValue("monthly_value"));
-          return <div className="font-medium font-mono text-neon">{formatCurrency(value)}</div>;
-        },
+        cell: ({ row }) => (
+          <div className="font-medium font-mono text-neon text-right">{formatCurrency(row.original.monthly_value)}</div>
+        ),
       },
       {
         id: "actions",
-        meta: { align: "right" },
         header: "Ações",
-        cell: () => {
-          return (
-            <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-8 w-8 p-0 hover:bg-neon/10 hover:text-neon data-[state=open]:bg-neon/10 data-[state=open]:text-neon"
-                  >
-                    <span className="sr-only">Abrir menu</span>
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur border-border/50">
-                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                  <DropdownMenuItem>Editar</DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-border/50" />
-                  <DropdownMenuItem className="text-red-500 hover:text-red-400 hover:bg-red-500/10">
-                    Arquivar Cliente
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-neon/10 hover:text-neon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur border-border/50">
+                <DropdownMenuLabel>Gestão</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedClient(row.original);
+                    setIsDrawerOpen(true);
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Pencil className="mr-2 h-4 w-4" /> Editar Informações
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/50" />
+                <DropdownMenuItem
+                  onClick={() => handleInactivate(row.original)}
+                  className="text-red-500 hover:bg-red-500/10 cursor-pointer"
+                >
+                  <UserX className="mr-2 h-4 w-4" /> Inativar (Zerar MRR)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ),
       },
     ],
     [],
@@ -511,131 +441,90 @@ const ClientsPage = () => {
   const table = useReactTable({
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
+    state: { sorting, columnFilters },
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      sorting,
-      columnFilters,
-    },
   });
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="space-y-6 p-6">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-[300px]" />
-        </div>
-        <Skeleton className="h-[400px] w-full rounded-xl" />
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-[400px] w-full" />
       </div>
     );
-  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 h-full flex flex-col">
-      {/* Header & Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-2 border-b border-border/40">
+    <div className="space-y-6 p-6 animate-in fade-in duration-500 h-full flex flex-col">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 pb-2 border-b border-border/40">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Building2 className="text-neon h-8 w-8" />
             Carteira de Clientes
           </h1>
-          <p className="text-muted-foreground mt-1">Gerencie seu pipeline e relacionamentos.</p>
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div className="flex items-center gap-2">
           <div className="relative w-full md:w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar empresas ou contatos..."
+              placeholder="Buscar..."
               value={(table.getColumn("company_info")?.getFilterValue() as string) ?? ""}
-              onChange={(event) => table.getColumn("company_info")?.setFilterValue(event.target.value)}
-              className="pl-10 bg-card/50 border-border/50 focus-visible:ring-neon"
+              onChange={(e) => table.getColumn("company_info")?.setFilterValue(e.target.value)}
+              className="pl-10"
             />
           </div>
           <Button
-            onClick={() => setIsDrawerOpen(true)}
-            className="bg-neon text-neon-foreground hover:bg-neon/90 shadow-lg shadow-neon/20 transition-all hover:scale-105 active:scale-95"
+            onClick={() => {
+              setSelectedClient(null);
+              setIsDrawerOpen(true);
+            }}
+            className="bg-neon text-neon-foreground"
           >
             <Plus className="mr-2 h-4 w-4" /> Novo Cliente
           </Button>
         </div>
       </div>
 
-      {/* Main Table Area */}
       <div className="rounded-xl border border-border/50 bg-card/30 backdrop-blur-sm overflow-hidden flex-1 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-purple-500/5 pointer-events-none" />
-
         <div className="relative overflow-auto h-full">
-          <div className="min-w-[980px]">
-            {/* Header */}
-            <div className="sticky top-0 bg-card/90 backdrop-blur z-10 border-b border-border/50">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-card/90 border-b border-border/50">
               {table.getHeaderGroups().map((headerGroup) => (
-                <div
-                  key={headerGroup.id}
-                  className="grid grid-cols-[minmax(280px,2.2fr)_140px_minmax(260px,2fr)_160px_72px]"
-                >
-                  {headerGroup.headers.map((header) => {
-                    const align = ((header.column.columnDef.meta as any)?.align as Align | undefined) ?? "left";
-
-                    return (
-                      <div
-                        key={header.id}
-                        className={cn(
-                          "h-11 px-4 flex items-center font-medium text-muted-foreground uppercase tracking-wider text-[11px]",
-                          alignJustifyClass[align],
-                          alignTextClass[align],
-                        )}
-                      >
-                        {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
-                      </div>
-                    );
-                  })}
-                </div>
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 text-left font-medium text-muted-foreground uppercase text-[11px]"
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  ))}
+                </tr>
               ))}
-            </div>
-
-            {/* Body */}
-            <div className="divide-y divide-border/40">
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <div
-                    key={row.id}
-                    className="grid grid-cols-[minmax(280px,2.2fr)_140px_minmax(260px,2fr)_160px_72px] transition-all duration-200 hover:bg-neon/5 group relative"
-                  >
-                    <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity" />
-                    {row.getVisibleCells().map((cell) => {
-                      const align = ((cell.column.columnDef.meta as any)?.align as Align | undefined) ?? "left";
-
-                      return (
-                        <div
-                          key={cell.id}
-                          className={cn(
-                            "px-4 py-3 flex items-center min-w-0",
-                            alignJustifyClass[align],
-                            alignTextClass[align],
-                          )}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))
-              ) : (
-                <div className="h-24 flex items-center justify-center text-muted-foreground">
-                  Nenhum cliente encontrado. Adicione seu primeiro cliente!
-                </div>
-              )}
-            </div>
-          </div>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="hover:bg-neon/5 transition-colors group">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-
-      {/* Drawer de Cadastro de Cliente */}
-      <NewClientDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} onSuccess={loadClients} />
+      <ClientFormDrawer
+        open={isDrawerOpen}
+        onOpenChange={setIsDrawerOpen}
+        onSuccess={loadClients}
+        client={selectedClient}
+      />
     </div>
   );
 };
