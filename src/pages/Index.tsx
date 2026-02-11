@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Workflow, Bot, BarChart3, Compass, ArrowRight } from "lucide-react";
+import { Workflow, Bot, BarChart3, Compass, ArrowRight, TrendingUp, LineChart } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
 import grifoLogo from "@/assets/clients/grifo.jpg";
 import californiaLogo from "@/assets/clients/california.jpg";
@@ -33,10 +33,22 @@ const pillars = [
   },
 ];
 
-const cases = [
-  { company: "Fintech Alpha", result: "Redução de 60% no tempo de deploy", area: "DevOps" },
-  { company: "SaaS Beta", result: "Escalou de 1K para 100K usuários", area: "Arquitetura" },
-  { company: "Startup Gamma", result: "Time técnico de 0 a 12 devs", area: "Liderança" },
+const differentials = [
+  {
+    icon: TrendingUp,
+    title: "Escala sem Atrito",
+    desc: "Preparamos a sua empresa para crescer 10x sem precisar multiplicar o tamanho da equipe. A tecnologia e a automação absorvem o impacto do aumento de volume, protegendo a sua margem de lucro.",
+  },
+  {
+    icon: LineChart,
+    title: "Eficiência Operacional (ROI)",
+    desc: "Transformamos custo de horas manuais em processamento em nuvem. Cada gargalo resolvido ou processo automatizado se traduz imediatamente em redução de despesas e mais lucro no final do mês.",
+  },
+  {
+    icon: BarChart3,
+    title: "Cultura Data-Driven",
+    desc: "Fim do achismo na diretoria. Consolidamos dados dispersos de diversas planilhas e sistemas em um único painel de comando em tempo real. Você passa a pilotar sua empresa com dados exatos.",
+  },
 ];
 
 const fadeUp = {
@@ -61,10 +73,10 @@ const Index = () => {
               Serviços
             </a>
             <a
-              href="#cases"
+              href="#diferenciais"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              Cases
+              Diferenciais
             </a>
             <a
               href="#contato"
@@ -76,7 +88,7 @@ const Index = () => {
         </div>
       </nav>
 
-      {/* Hero - Corrigido o padding top (pt-40) para compensar o header alto */}
+      {/* Hero */}
       <section className="relative min-h-screen flex items-center justify-center pt-40 pb-20 overflow-hidden">
         {/* Aurora glow from bottom center */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_100%,_hsl(120_100%_50%_/_0.12)_0%,_hsl(120_100%_30%_/_0.05)_40%,_transparent_70%)]" />
@@ -130,13 +142,13 @@ const Index = () => {
                 Agendar Diagnóstico <ArrowRight className="ml-2" size={18} />
               </Button>
             </a>
-            <a href="#cases" className="w-full sm:w-auto">
+            <a href="#diferenciais" className="w-full sm:w-auto">
               <Button
                 size="lg"
                 variant="outline"
                 className="w-full sm:w-auto border-border text-foreground font-semibold text-base px-8 hover:border-neon hover:text-neon transition-colors bg-background/50 backdrop-blur-sm"
               >
-                Ver Cases de Sucesso
+                Por que a Pevetech?
               </Button>
             </a>
           </motion.div>
@@ -214,36 +226,48 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Cases */}
-      <section id="cases" className="py-24 bg-card/20 border-y border-border/40 relative z-10">
+      {/* Diferenciais / Metodologia */}
+      <section id="diferenciais" className="py-24 bg-card/20 border-y border-border/40 relative z-10">
         <div className="container mx-auto px-6">
-          <motion.h2
-            className="text-3xl md:text-4xl font-bold text-center mb-16"
+          <motion.div
+            className="text-center mb-16"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
             variants={fadeUp}
             custom={0}
           >
-            Cases de <span className="text-neon">Sucesso</span>
-          </motion.h2>
+            <span className="inline-block px-3 py-1 rounded-full bg-neon/10 text-neon text-xs font-display mb-4 tracking-wider border border-neon/20">
+              NOSSO FOCO
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold">
+              Como Geramos <span className="text-neon">Valor</span>
+            </h2>
+          </motion.div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {cases.map((c, i) => (
+            {differentials.map((d, i) => (
               <motion.div
-                key={c.company}
-                className="p-8 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm relative overflow-hidden group hover:border-neon/30 transition-colors"
+                key={d.title}
+                className="p-8 rounded-2xl border border-border/50 bg-background/50 backdrop-blur-sm relative overflow-hidden group hover:border-neon/40 transition-all duration-300"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
                 variants={fadeUp}
-                custom={i}
+                custom={i + 1}
               >
+                {/* Background Glow on Hover */}
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon/40 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-                <span className="inline-flex items-center rounded-md bg-neon/10 px-2 py-1 text-xs font-medium text-neon ring-1 ring-inset ring-neon/20 mb-4">
-                  {c.area}
-                </span>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">{c.company}</h3>
-                <p className="text-muted-foreground">{c.result}</p>
+
+                <div className="relative z-10">
+                  <div className="h-14 w-14 rounded-xl bg-card border border-border/50 flex items-center justify-center mb-6 group-hover:bg-neon/10 group-hover:border-neon/30 transition-colors">
+                    <d.icon className="text-foreground group-hover:text-neon transition-colors" size={28} />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-4 text-foreground group-hover:text-neon transition-colors">
+                    {d.title}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">{d.desc}</p>
+                </div>
               </motion.div>
             ))}
           </div>
