@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LayoutDashboard, Users, Briefcase, CheckSquare, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
+import pevetechIcon from "@/assets/pevetech-icon.png";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -40,11 +41,11 @@ const DashboardSidebar = () => {
       {/* Container da Logo - Dinâmico */}
       <div className="pt-10 pb-8 px-4 flex justify-center items-center h-32">
         <img
-          src={pevetechLogo}
+          src={isCollapsed ? pevetechIcon : pevetechLogo}
           alt="Pevetech"
           className={cn(
             "object-contain transition-all duration-300 hover:scale-105",
-            isCollapsed ? "h-8 w-8" : "h-24 w-auto",
+            isCollapsed ? "h-5 w-5" : "h-24 w-auto",
           )}
         />
       </div>
