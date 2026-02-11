@@ -369,30 +369,32 @@ const ClientsPage = () => {
     () => [
       {
         id: "company_info",
+        accessorFn: (row) => row.company_name,
         header: ({ column }) => {
           const isSorted = column.getIsSorted();
           return (
+            // -ml-4 compensa o padding do botão para alinhar perfeitamente à esquerda com a Avatar
             <Button
               variant="ghost"
-              className="p-0 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-start h-auto w-full"
               onClick={() => column.toggleSorting(isSorted === "asc")}
+              className="-ml-4 h-8 px-4 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Empresa
               {isSorted === "asc" ? (
-                <ArrowUp className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+                <ArrowUp className="ml-2 h-4 w-4 text-neon" />
               ) : isSorted === "desc" ? (
-                <ArrowDown className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+                <ArrowDown className="ml-2 h-4 w-4 text-neon" />
               ) : (
-                <ArrowUpDown className="ml-2 h-4 w-4 opacity-30 group-hover:opacity-70 transition-opacity" />
+                // Invisível por padrão, aparece sutilmente ao passar o mouse
+                <ArrowUpDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
               )}
             </Button>
           );
         },
-        accessorFn: (row) => row.company_name,
         cell: ({ row }) => {
           const client = row.original;
           return (
-            <div className="flex items-center gap-3 py-1">
+            <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9 border border-border/50">
                 <AvatarImage src={client.logo_url || undefined} />
                 <AvatarFallback className="bg-secondary text-xs font-medium text-muted-foreground">
@@ -411,18 +413,22 @@ const ClientsPage = () => {
       },
       {
         accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+        header: () => <div className="text-center w-full">Status</div>,
+        cell: ({ row }) => (
+          <div className="flex justify-center w-full">
+            <StatusBadge status={row.getValue("status")} />
+          </div>
+        ),
         filterFn: (row, id, value) => {
           return value.includes(row.getValue(id));
         },
       },
       {
         id: "contact_info",
-        header: "Contato Principal",
         accessorFn: (row) => row.name,
+        header: "Contato Principal",
         cell: ({ row }) => (
-          <div className="flex flex-col justify-center">
+          <div className="flex flex-col">
             <span className="text-sm font-medium">{row.original.name}</span>
             <span className="text-xs text-muted-foreground truncate">{row.original.email || "Sem e-mail"}</span>
           </div>
@@ -433,19 +439,21 @@ const ClientsPage = () => {
         header: ({ column }) => {
           const isSorted = column.getIsSorted();
           return (
+            // Wrapper para alinhar o botão inteiro à direita
             <div className="flex justify-end w-full">
               <Button
                 variant="ghost"
-                className="p-0 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center justify-end h-auto"
                 onClick={() => column.toggleSorting(isSorted === "asc")}
+                // -mr-4 compensa o padding do botão para alinhar perfeitamente à direita
+                className="-mr-4 h-8 px-4 hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 MRR / Valor
                 {isSorted === "asc" ? (
-                  <ArrowUp className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+                  <ArrowUp className="ml-2 h-4 w-4 text-neon" />
                 ) : isSorted === "desc" ? (
-                  <ArrowDown className="ml-2 h-4 w-4 text-neon animate-in fade-in-50" />
+                  <ArrowDown className="ml-2 h-4 w-4 text-neon" />
                 ) : (
-                  <ArrowUpDown className="ml-2 h-4 w-4 opacity-30 group-hover:opacity-70 transition-opacity" />
+                  <ArrowUpDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-50 transition-opacity" />
                 )}
               </Button>
             </div>
@@ -458,6 +466,7 @@ const ClientsPage = () => {
       },
       {
         id: "actions",
+        header: () => <div className="text-right w-full">Ações</div>,
         cell: ({ row }) => {
           return (
             <div className="flex justify-end w-full" onClick={(e) => e.stopPropagation()}>
@@ -556,7 +565,7 @@ const ClientsPage = () => {
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
-                      className="h-11 px-4 text-left align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]"
+                      className="h-11 px-4 align-middle font-medium text-muted-foreground uppercase tracking-wider text-[11px]"
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </th>
@@ -572,9 +581,8 @@ const ClientsPage = () => {
                     className="border-b border-border/40 transition-all duration-200 hover:bg-neon/5 group relative"
                   >
                     <td className="absolute left-0 top-0 bottom-0 w-[2px] bg-neon opacity-0 group-hover:opacity-100 transition-opacity"></td>
-                    {/* Correção do padding para px-4 py-3 */}
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3 align-middle">
+                      <td key={cell.id} className="p-4 align-middle">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
