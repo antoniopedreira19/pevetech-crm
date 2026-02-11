@@ -40,9 +40,9 @@ interface MrrHistory {
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-const getLast6Months = () => {
+const getLast6MonthsPlus2 = () => {
   const months = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = 5; i >= -2; i--) {
     const d = new Date();
     d.setMonth(d.getMonth() - i);
     months.push(new Date(d.getFullYear(), d.getMonth(), 1));
@@ -82,47 +82,84 @@ const KPICard = ({ title, value, icon: Icon, delay }: { title: string; value: st
   </Card>
 );
 
-const RevenueChart = ({ data }: { data: any[] }) => (
-  <div className="h-[300px] w-full">
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data}>
-        <defs>
-          <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(var(--neon))" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="hsl(var(--neon))" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
-        <XAxis
-          dataKey="name"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-          dy={10}
-        />
-        <YAxis
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-          tickFormatter={(value) => `R$${value / 1000}k`}
-        />
-        <Tooltip
-          contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
-          itemStyle={{ color: "hsl(var(--foreground))" }}
-          formatter={(value: number) => [formatCurrency(value), "MRR"]}
-        />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="hsl(var(--neon))"
-          strokeWidth={3}
-          fillOpacity={1}
-          fill="url(#colorMrr)"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  </div>
-);
+const RevenueChart = ({ data }: { data: any[] }) => {
+  const lastRealIndex = (() => {
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (!data[i].isFuture) return i;
+    }
+    return -1;
+  })();
+  
+  // Prepare split data for chart
+  const chartItems = data.map((d: any, i: number) => ({
+    ...d,
+    realValue: !d.isFuture ? d.value : undefined,
+    projValue: d.isFuture || i === lastRealIndex ? d.value : undefined,
+  }));
+  
+  return (
+    <div className="h-[300px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={chartItems}>
+          <defs>
+            <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--neon))" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(var(--neon))" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="colorMrrFuture" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(var(--neon))" stopOpacity={0.1} />
+              <stop offset="95%" stopColor="hsl(var(--neon))" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.4} />
+          <XAxis
+            dataKey="name"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            dy={10}
+          />
+          <YAxis
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+            tickFormatter={(value) => `R$${value / 1000}k`}
+          />
+          <Tooltip
+            contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
+            itemStyle={{ color: "hsl(var(--foreground))" }}
+            formatter={(value: number, name: string, props: any) => [
+              formatCurrency(value),
+              props.payload.isFuture ? "MRR (Projeção)" : "MRR",
+            ]}
+          />
+          <Area
+            type="monotone"
+            dataKey="realValue"
+            stroke="hsl(var(--neon))"
+            strokeWidth={3}
+            fillOpacity={1}
+            fill="url(#colorMrr)"
+            name="MRR"
+            connectNulls={false}
+          />
+          <Area
+            type="monotone"
+            dataKey="projValue"
+            stroke="hsl(var(--neon))"
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            strokeOpacity={0.5}
+            fillOpacity={1}
+            fill="url(#colorMrrFuture)"
+            name="Projeção"
+            connectNulls
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
 const FunnelChart = ({ data }: { data: any[] }) => (
   <div className="h-[200px] w-full mt-4">
@@ -192,23 +229,27 @@ const DashboardOverview = () => {
   }, [clients, leads]);
 
   const chartData = useMemo(() => {
-    const months = getLast6Months();
+    const months = getLast6MonthsPlus2();
+    const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     return months.map((monthDate) => {
+      const isFuture = monthDate > currentMonth;
       const endOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59);
+      const referenceEnd = isFuture ? new Date() : endOfMonth;
 
       const clientsStarted = clients.filter((c) => {
         if (!c.start_date) return false;
         const [year, month, day] = c.start_date.split("-").map(Number);
         const startDateAbsolute = new Date(year, month - 1, day, 0, 0, 0);
-        return startDateAbsolute <= endOfMonth;
+        return startDateAbsolute <= referenceEnd;
       });
 
       let totalMrrForMonth = 0;
 
       clientsStarted.forEach((client) => {
         const historyForClient = mrrHistory.filter(
-          (h) => h.client_id === client.id && new Date(h.effective_date) <= endOfMonth,
+          (h) => h.client_id === client.id && new Date(h.effective_date) <= referenceEnd,
         );
 
         if (historyForClient.length > 0) {
@@ -221,6 +262,7 @@ const DashboardOverview = () => {
       return {
         name: monthDate.toLocaleDateString("pt-BR", { month: "short" }),
         value: totalMrrForMonth,
+        isFuture,
       };
     });
   }, [clients, mrrHistory]);
@@ -286,7 +328,7 @@ const DashboardOverview = () => {
         <Card className="col-span-4 bg-card/50 backdrop-blur-sm border-border/50 shadow-lg">
           <CardHeader>
             <CardTitle>Crescimento de Receita</CardTitle>
-            <CardDescription>Evolução baseada em StartDate e Histórico de MRR</CardDescription>
+            <CardDescription>Evolução do MRR real + projeção dos próximos 2 meses</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <RevenueChart data={chartData} />

@@ -18,6 +18,7 @@ import {
   Pencil,
   UserX,
   Mail,
+  TrendingUp,
 } from "lucide-react";
 import {
   ColumnDef,
@@ -44,6 +45,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
@@ -133,6 +135,153 @@ const StatusBadge = ({ status }: { status: string | null }) => {
   );
 };
 
+// --- MRR Update Modal ---
+const MrrUpdateModal = ({
+  open,
+  onOpenChange,
+  client,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  client: Client | null;
+  onSuccess: () => void;
+}) => {
+  const [newValue, setNewValue] = useState("");
+  const [reason, setReason] = useState("");
+  const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split("T")[0]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open && client) {
+      setNewValue("");
+      setReason("");
+      setEffectiveDate(new Date().toISOString().split("T")[0]);
+    }
+  }, [open, client]);
+
+  const currentValue = client?.monthly_value || 0;
+  const parsedNew = parseFloat(newValue) || 0;
+  const diff = parsedNew - currentValue;
+  const diffPercent = currentValue > 0 ? ((diff / currentValue) * 100).toFixed(1) : "—";
+
+  const handleSubmit = async () => {
+    if (!client) return;
+    if (!newValue || parsedNew === currentValue) {
+      toast.error("Informe um novo valor diferente do atual.");
+      return;
+    }
+    if (!reason.trim()) {
+      toast.error("Informe o motivo da alteração.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const { error: histError } = await supabase.from("client_mrr_history" as any).insert([{
+        client_id: client.id,
+        previous_value: currentValue,
+        new_value: parsedNew,
+        reason: reason.trim(),
+        effective_date: new Date(effectiveDate).toISOString(),
+      }]);
+      if (histError) throw histError;
+
+      const { error } = await supabase.from("clients").update({ monthly_value: parsedNew }).eq("id", client.id);
+      if (error) throw error;
+
+      toast.success("MRR atualizado com sucesso!");
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!client) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md bg-background border-border/50">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign className="text-neon" size={20} />
+            Alterar MRR
+          </DialogTitle>
+          <DialogDescription>
+            {client.company_name}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 py-2">
+          {/* Current value display */}
+          <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+            <p className="text-xs text-muted-foreground mb-1">Valor Atual</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{formatCurrency(currentValue)}</p>
+          </div>
+
+          {/* New value input */}
+          <div className="space-y-2">
+            <Label>Novo Valor (R$) *</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              className="bg-card/50 font-mono text-lg h-12"
+              autoFocus
+            />
+            {newValue && parsedNew !== currentValue && (
+              <div className={cn(
+                "flex items-center gap-2 text-sm font-medium animate-in fade-in duration-200",
+                diff > 0 ? "text-emerald-400" : "text-red-400"
+              )}>
+                {diff > 0 ? <TrendingUp size={14} /> : <ArrowDown size={14} />}
+                <span>{diff > 0 ? "+" : ""}{formatCurrency(diff)} ({diffPercent}%)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Effective date */}
+          <div className="space-y-2">
+            <Label>Data de Vigência *</Label>
+            <Input
+              type="date"
+              value={effectiveDate}
+              onChange={(e) => setEffectiveDate(e.target.value)}
+              className="bg-card/50"
+            />
+          </div>
+
+          {/* Reason */}
+          <div className="space-y-2">
+            <Label>Motivo da Alteração *</Label>
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex: Novo módulo contratado, Reajuste anual..."
+              className="bg-card/50"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !newValue || parsedNew === currentValue || !reason.trim()}
+            className="bg-neon text-neon-foreground"
+          >
+            {isSubmitting ? "Salvando..." : "Confirmar Alteração"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // --- Form Drawer ---
 const ClientFormDrawer = ({
   open,
@@ -146,7 +295,6 @@ const ClientFormDrawer = ({
   client?: Client | null;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mrrReason, setMrrReason] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     company_name: "",
@@ -158,8 +306,6 @@ const ClientFormDrawer = ({
     logo_url: "",
     setor: "",
   });
-
-  const mrrChanged = client ? formData.monthly_value !== (client.monthly_value || 0) : false;
 
   useEffect(() => {
     if (open) {
@@ -188,39 +334,23 @@ const ClientFormDrawer = ({
           setor: "",
         });
       }
-      setMrrReason("");
+      
     }
   }, [client, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mrrChanged && !mrrReason.trim()) {
-      toast.error("Informe o motivo da alteração do MRR.");
-      return;
-    }
     setIsSubmitting(true);
     try {
       const payload = { ...formData, status: formData.status as any };
 
       if (client) {
-        // Se MRR mudou, registrar no histórico
-        if (mrrChanged) {
-          const { error: histError } = await supabase.from("client_mrr_history" as any).insert([{
-            client_id: client.id,
-            previous_value: client.monthly_value || 0,
-            new_value: formData.monthly_value,
-            reason: mrrReason.trim(),
-            effective_date: new Date().toISOString(),
-          }]);
-          if (histError) throw histError;
-        }
         const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
         if (error) throw error;
         toast.success("Cliente atualizado!");
       } else {
         const { data: newClient, error } = await supabase.from("clients").insert([payload]).select().single();
         if (error) throw error;
-        // Registro inicial de MRR
         if (newClient) {
           await supabase.from("client_mrr_history" as any).insert([{
             client_id: newClient.id,
@@ -308,9 +438,18 @@ const ClientFormDrawer = ({
               </div>
             </div>
             <Separator />
-            <div className="grid grid-cols-2 gap-4">
+            {client && (
               <div className="space-y-1">
-                <Label>Valor MRR (R$)</Label>
+                <Label>MRR Atual</Label>
+                <div className="flex items-center justify-between rounded-md border border-border/50 bg-card/50 px-3 py-2">
+                  <span className="font-mono text-neon font-bold">{formatCurrency(formData.monthly_value)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Use o menu de ações (⋯) na tabela para alterar o MRR.</p>
+              </div>
+            )}
+            {!client && (
+              <div className="space-y-1">
+                <Label>Valor MRR Inicial (R$)</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -319,6 +458,8 @@ const ClientFormDrawer = ({
                   className="bg-card/50 font-mono text-neon"
                 />
               </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Status</Label>
                 <Select value={formData.status} onValueChange={(val) => setFormData({ ...formData, status: val })}>
@@ -333,31 +474,16 @@ const ClientFormDrawer = ({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Data de Início</Label>
-              <Input
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="bg-card/50"
-              />
-            </div>
-            {mrrChanged && (
-              <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                <Label className="text-amber-400">Motivo da alteração do MRR *</Label>
+              <div className="space-y-1">
+                <Label>Data de Início</Label>
                 <Input
-                  value={mrrReason}
-                  onChange={(e) => setMrrReason(e.target.value)}
-                  placeholder="Ex: Novo módulo contratado, Reajuste anual..."
-                  className="bg-card/50 border-amber-500/30 focus-visible:ring-amber-500/50"
-                  required
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                  className="bg-card/50"
                 />
-                <p className="text-xs text-muted-foreground">
-                  De {formatCurrency(client?.monthly_value || 0)} → {formatCurrency(formData.monthly_value)}
-                </p>
               </div>
-            )}
+            </div>
           </div>
           <SheetFooter className="p-6 border-t border-border/50 sticky bottom-0 bg-background/95">
             <Button type="submit" className="w-full bg-neon text-neon-foreground">
@@ -377,6 +503,7 @@ const ClientsPage = () => {
   const [sorting, setSorting] = useState<SortingState>([{ id: "monthly_value", desc: true }]); // Ordenação default por MRR decrescente
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMrrModalOpen, setIsMrrModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   const loadClients = async () => {
@@ -478,7 +605,15 @@ const ClientsPage = () => {
                     setIsDrawerOpen(true);
                   }}
                 >
-                  <Pencil className="mr-2 h-4 w-4" /> Editar
+                  <Pencil className="mr-2 h-4 w-4" /> Editar Dados
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedClient(row.original);
+                    setIsMrrModalOpen(true);
+                  }}
+                >
+                  <DollarSign className="mr-2 h-4 w-4" /> Alterar MRR
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleInactivate(row.original)} className="text-red-500">
@@ -569,6 +704,12 @@ const ClientsPage = () => {
         onOpenChange={setIsDrawerOpen}
         onSuccess={loadClients}
         client={selectedClient}
+      />
+      <MrrUpdateModal
+        open={isMrrModalOpen}
+        onOpenChange={setIsMrrModalOpen}
+        client={selectedClient}
+        onSuccess={loadClients}
       />
     </div>
   );
