@@ -41,7 +41,7 @@ const formatDate = (dateString?: string | null) => {
 // --- Components ---
 
 const TaskItem = ({ task, onToggle }: { task: Task; onToggle: (id: string, currentStatus: boolean) => void }) => {
-  const isCompleted = task.status === "completed" || task.is_completed; // Lida com boolean ou string dependendo do seu schema
+  const isCompleted = !!task.is_completed;
 
   return (
     <div
@@ -126,7 +126,7 @@ const TasksPage = () => {
     // Optimistic UI update
     setTasks(
       tasks.map((t) =>
-        t.id === taskId ? { ...t, is_completed: !currentStatus, status: !currentStatus ? "completed" : "pending" } : t,
+        t.id === taskId ? { ...t, is_completed: !currentStatus } : t,
       ),
     );
 
@@ -143,7 +143,7 @@ const TasksPage = () => {
   const filteredClients = useMemo(() => {
     return clients.filter(
       (c) =>
-        c.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [clients, searchTerm]);
@@ -155,8 +155,8 @@ const TasksPage = () => {
     const clientTasks = tasks.filter((t) => t.client_id === selectedClientId);
 
     return {
-      pending: clientTasks.filter((t) => t.status !== "completed" && !t.is_completed),
-      completed: clientTasks.filter((t) => t.status === "completed" || t.is_completed),
+      pending: clientTasks.filter((t) => !t.is_completed),
+      completed: clientTasks.filter((t) => !!t.is_completed),
     };
   }, [tasks, selectedClientId]);
 
@@ -212,7 +212,7 @@ const TasksPage = () => {
             {filteredClients.map((client) => {
               // Calculando progresso para o card
               const cTasks = tasks.filter((t) => t.client_id === client.id);
-              const completed = cTasks.filter((t) => t.status === "completed" || t.is_completed).length;
+              const completed = cTasks.filter((t) => !!t.is_completed).length;
               const total = cTasks.length;
               const pending = total - completed;
               const progress = total === 0 ? 0 : (completed / total) * 100;
@@ -233,12 +233,12 @@ const TasksPage = () => {
                     <Avatar className={`h-10 w-10 border ${isSelected ? "border-neon/50" : "border-border/50"}`}>
                       <AvatarImage src={client.logo_url || undefined} />
                       <AvatarFallback className="bg-secondary text-xs font-bold">
-                        {getInitials(client.company)}
+                        {getInitials(client.company_name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-semibold text-sm truncate ${isSelected ? "text-neon" : "text-foreground"}`}>
-                        {client.company}
+                        {client.company_name}
                       </h3>
                       <p className="text-xs text-muted-foreground truncate">{client.name}</p>
                     </div>
@@ -260,7 +260,7 @@ const TasksPage = () => {
                     <Progress
                       value={progress}
                       className="h-1.5 bg-background/50"
-                      indicatorClassName={isSelected ? "bg-neon" : "bg-primary"}
+                      
                     />
                   </div>
                 </div>
@@ -297,11 +297,11 @@ const TasksPage = () => {
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12 border-2 border-neon/20 shadow-lg shadow-neon/5">
                   <AvatarFallback className="bg-neon/10 text-neon font-bold text-lg">
-                    {getInitials(activeClient.company)}
+                    {getInitials(activeClient.company_name)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="text-xl font-bold">{activeClient.company}</h2>
+                  <h2 className="text-xl font-bold">{activeClient.company_name}</h2>
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Clock className="h-3 w-3" />
                     {activeTasks.pending.length} tarefas em aberto
