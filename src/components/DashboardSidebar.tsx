@@ -9,7 +9,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Beaker, // Ícone do Labs adicionado
+  Beaker,
 } from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
 import pevetechIcon from "@/assets/pevetech-icon.png";
@@ -20,7 +20,7 @@ const links = [
   { to: "/dashboard/crm", icon: Briefcase, label: "CRM" },
   { to: "/dashboard/clients", icon: Users, label: "Clientes" },
   { to: "/dashboard/tasks", icon: CheckSquare, label: "Tarefas" },
-  { to: "/dashboard/labs", icon: Beaker, label: "Labs Admin" }, // Rota do painel de controle do Labs
+  { to: "/dashboard/labs", icon: Beaker, label: "Labs Admin" },
 ];
 
 const DashboardSidebar = () => {
@@ -49,13 +49,19 @@ const DashboardSidebar = () => {
       </button>
 
       {/* Container da Logo - Dinâmico */}
-      <div className="pt-10 pb-8 px-4 flex justify-center items-center h-32">
+      <div
+        className={cn(
+          "pt-10 pb-8 flex justify-center items-center h-32 transition-all duration-300",
+          isCollapsed ? "px-0" : "px-4", // Removemos o padding para o ícone respirar
+        )}
+      >
         <img
           src={isCollapsed ? pevetechIcon : pevetechLogo}
           alt="Pevetech"
           className={cn(
-            "object-contain transition-all duration-300 hover:scale-110",
-            isCollapsed ? "h-20 w-20 drop-shadow-[0_0_12px_hsl(var(--neon)/0.5)]" : "h-24 w-auto",
+            "object-contain transition-all duration-300 hover:scale-105",
+            // Tamanho maior e Glow neon para dar destaque
+            isCollapsed ? "h-12 w-12 drop-shadow-[0_0_12px_rgba(0,255,128,0.3)]" : "h-24 w-auto",
           )}
         />
       </div>
