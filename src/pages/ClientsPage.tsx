@@ -162,18 +162,32 @@ const ClientFormDrawer = ({
   const mrrChanged = client ? formData.monthly_value !== (client.monthly_value || 0) : false;
 
   useEffect(() => {
-    if (client) {
-      setFormData({
-        name: client.name || "",
-        company_name: client.company_name || "",
-        email: client.email || "",
-        phone: client.phone || "",
-        status: client.status || "active",
-        start_date: client.start_date || new Date().toISOString().split("T")[0],
-        monthly_value: client.monthly_value || 0,
-        logo_url: client.logo_url || "",
-        setor: client.setor || "",
-      });
+    if (open) {
+      if (client) {
+        setFormData({
+          name: client.name || "",
+          company_name: client.company_name || "",
+          email: client.email || "",
+          phone: client.phone || "",
+          status: client.status || "active",
+          start_date: client.start_date || new Date().toISOString().split("T")[0],
+          monthly_value: client.monthly_value || 0,
+          logo_url: client.logo_url || "",
+          setor: client.setor || "",
+        });
+      } else {
+        setFormData({
+          name: "",
+          company_name: "",
+          email: "",
+          phone: "",
+          status: "active",
+          start_date: new Date().toISOString().split("T")[0],
+          monthly_value: 0,
+          logo_url: "",
+          setor: "",
+        });
+      }
       setMrrReason("");
     }
   }, [client, open]);
@@ -319,6 +333,15 @@ const ClientFormDrawer = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Data de Início</Label>
+              <Input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                className="bg-card/50"
+              />
             </div>
             {mrrChanged && (
               <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
