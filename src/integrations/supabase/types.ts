@@ -24,6 +24,7 @@ export type Database = {
           monthly_value: number | null
           name: string
           phone: string | null
+          setor: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["client_status"] | null
         }
@@ -36,6 +37,7 @@ export type Database = {
           monthly_value?: number | null
           name: string
           phone?: string | null
+          setor?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["client_status"] | null
         }
@@ -48,6 +50,7 @@ export type Database = {
           monthly_value?: number | null
           name?: string
           phone?: string | null
+          setor?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["client_status"] | null
         }
