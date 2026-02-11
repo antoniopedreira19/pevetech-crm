@@ -128,10 +128,12 @@ const RevenueChart = ({ data }: { data: any[] }) => {
           <Tooltip
             contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
             itemStyle={{ color: "hsl(var(--foreground))" }}
-            formatter={(value: number, name: string, props: any) => [
-              formatCurrency(value),
-              props.payload.isFuture ? "MRR (Projeção)" : "MRR",
-            ]}
+            formatter={(value: number, name: string, props: any) => {
+              // Hide duplicate on overlap point
+              if (name === "Projeção" && props.payload.realValue !== undefined) return [null, null];
+              return [formatCurrency(value), props.payload.isFuture ? "MRR (Projeção)" : "MRR"];
+            }}
+            filterNull
           />
           <Area
             type="monotone"
