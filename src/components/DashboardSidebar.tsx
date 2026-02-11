@@ -1,7 +1,16 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Users, Briefcase, CheckSquare, LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  Briefcase,
+  CheckSquare,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Beaker, // Ícone do Labs adicionado
+} from "lucide-react";
 import pevetechLogo from "@/assets/pevetech-logo.png";
 import pevetechIcon from "@/assets/pevetech-icon.png";
 import { cn } from "@/lib/utils";
@@ -11,6 +20,7 @@ const links = [
   { to: "/dashboard/crm", icon: Briefcase, label: "CRM" },
   { to: "/dashboard/clients", icon: Users, label: "Clientes" },
   { to: "/dashboard/tasks", icon: CheckSquare, label: "Tarefas" },
+  { to: "/dashboard/labs", icon: Beaker, label: "Labs Admin" }, // Rota do painel de controle do Labs
 ];
 
 const DashboardSidebar = () => {
