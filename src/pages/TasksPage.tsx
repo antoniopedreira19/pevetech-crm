@@ -1,7 +1,11 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { Search, Plus, CheckCircle2, Circle, Calendar, Clock, Briefcase, AlertCircle, LayoutList } from "lucide-react";
+import {
+  Search, Plus, CheckCircle2, Circle, Calendar, Clock, Briefcase,
+  AlertCircle, LayoutList, MessageSquare, ChevronDown, ChevronRight,
+  Flame, ArrowRight, Send, Loader2, PlayCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,21 +13,50 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 // --- Types ---
 type Client = Tables<"clients">;
-// Extendendo a tipagem base do Supabase caso esses campos não estejam perfeitamente mapeados ainda
-type Task = Tables<"tasks"> & {
-  due_date?: string | null;
-  priority?: "low" | "medium" | "high" | null;
+type Task = Tables<"tasks"> & { status?: string };
+type TaskComment = { id: string; task_id: string; content: string; created_at: string; user_id: string | null };
+
+type TaskStatus = "todo" | "in_progress" | "completed";
+
+const STATUS_CONFIG: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
+  todo: {
+    label: "A Fazer",
+    icon: <Circle className="h-4 w-4" />,
+    color: "text-muted-foreground",
+    bg: "bg-muted/30",
+  },
+  in_progress: {
+    label: "Em Andamento",
+    icon: <PlayCircle className="h-4 w-4" />,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+  },
+  completed: {
+    label: "Concluídas",
+    icon: <CheckCircle2 className="h-4 w-4" />,
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+  },
 };
 
-// --- Helper Functions ---
-const getInitials = (name: string | null) => {
-  if (!name) return "CL";
-  return name.substring(0, 2).toUpperCase();
+const PRIORITY_CONFIG = {
+  high: { label: "Alta", color: "border-red-500/40 text-red-400 bg-red-500/10", icon: <Flame className="h-3 w-3" /> },
+  medium: { label: "Média", color: "border-amber-500/40 text-amber-400 bg-amber-500/10", icon: <AlertCircle className="h-3 w-3" /> },
+  low: { label: "Baixa", color: "border-emerald-500/40 text-emerald-400 bg-emerald-500/10", icon: <ArrowRight className="h-3 w-3" /> },
 };
+
+// --- Helpers ---
+const getInitials = (name: string | null) => name ? name.substring(0, 2).toUpperCase() : "CL";
 
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return null;
@@ -31,244 +64,439 @@ const formatDate = (dateString?: string | null) => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-
   if (date.toDateString() === today.toDateString()) return "Hoje";
   if (date.toDateString() === tomorrow.toDateString()) return "Amanhã";
-
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
 };
 
-// --- Components ---
+const formatCommentDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+};
 
-const TaskItem = ({ task, onToggle }: { task: Task; onToggle: (id: string, currentStatus: boolean) => void }) => {
-  const isCompleted = !!task.is_completed;
+// --- Task Card Component ---
+const TaskCard = ({
+  task,
+  comments,
+  onStatusChange,
+  onAddComment,
+}: {
+  task: Task;
+  comments: TaskComment[];
+  onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
+  onAddComment: (taskId: string, content: string) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const status = (task.status as TaskStatus) || "todo";
+  const priority = task.priority as keyof typeof PRIORITY_CONFIG | null;
+  const priorityInfo = priority ? PRIORITY_CONFIG[priority] : null;
+  const isCompleted = status === "completed";
+
+  const nextStatus: Record<TaskStatus, TaskStatus> = {
+    todo: "in_progress",
+    in_progress: "completed",
+    completed: "todo",
+  };
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim()) return;
+    setSubmitting(true);
+    await onAddComment(task.id, commentText.trim());
+    setCommentText("");
+    setSubmitting(false);
+  };
 
   return (
     <div
-      className={`group flex items-start gap-3 p-3 rounded-xl transition-all duration-200 hover:bg-card/60 border border-transparent hover:border-border/50 ${isCompleted ? "opacity-60" : ""}`}
+      className={`group rounded-xl border transition-all duration-200 ${
+        isCompleted
+          ? "border-border/30 bg-card/20 opacity-60"
+          : "border-border/50 bg-card/40 hover:border-border/80 hover:bg-card/60"
+      }`}
     >
-      <button
-        onClick={() => onToggle(task.id, isCompleted)}
-        className="mt-0.5 shrink-0 text-muted-foreground hover:text-neon transition-colors"
-      >
-        {isCompleted ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5" />}
-      </button>
-
-      <div className="flex flex-col flex-1 gap-1.5 min-w-0">
-        <span
-          className={`text-sm font-medium transition-all ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}
+      {/* Main Row */}
+      <div className="flex items-start gap-3 p-4">
+        {/* Status Toggle Button */}
+        <button
+          onClick={() => onStatusChange(task.id, nextStatus[status])}
+          className={`mt-0.5 shrink-0 transition-colors ${STATUS_CONFIG[status].color} hover:opacity-80`}
+          title={`Mudar para: ${STATUS_CONFIG[nextStatus[status]].label}`}
         >
-          {task.title}
-        </span>
+          {status === "completed" ? (
+            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+          ) : status === "in_progress" ? (
+            <PlayCircle className="h-5 w-5 text-blue-400" />
+          ) : (
+            <Circle className="h-5 w-5" />
+          )}
+        </button>
 
-        {/* Metadados da Tarefa */}
-        <div className="flex flex-wrap items-center gap-2">
-          {task.due_date && (
-            <Badge
-              variant="outline"
-              className={`text-[10px] px-1.5 py-0 h-5 gap-1 ${isCompleted ? "border-border/50 text-muted-foreground" : "border-amber-500/30 text-amber-500 bg-amber-500/5"}`}
-            >
-              <Calendar className="h-3 w-3" />
-              {formatDate(task.due_date)}
-            </Badge>
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
+              {task.title}
+            </span>
+          </div>
+
+          {task.description && !isCompleted && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{task.description}</p>
           )}
 
-          {task.priority === "high" && !isCompleted && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 h-5 gap-1 border-red-500/30 text-red-500 bg-red-500/5"
-            >
-              <AlertCircle className="h-3 w-3" />
-              Urgente
-            </Badge>
-          )}
+          {/* Metadata Badges */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {priorityInfo && !isCompleted && (
+              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 gap-1 ${priorityInfo.color}`}>
+                {priorityInfo.icon}
+                {priorityInfo.label}
+              </Badge>
+            )}
+            {task.due_date && (
+              <Badge
+                variant="outline"
+                className={`text-[10px] px-1.5 py-0 h-5 gap-1 ${
+                  isCompleted ? "border-border/30 text-muted-foreground" : "border-muted-foreground/30 text-muted-foreground"
+                }`}
+              >
+                <Calendar className="h-3 w-3" />
+                {formatDate(task.due_date)}
+              </Badge>
+            )}
+            {comments.length > 0 && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-border/30 text-muted-foreground">
+                <MessageSquare className="h-3 w-3" />
+                {comments.length}
+              </Badge>
+            )}
+          </div>
         </div>
+
+        {/* Expand Toggle */}
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary/50"
+        >
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
       </div>
+
+      {/* Expanded: Comments Section */}
+      {expanded && (
+        <div className="border-t border-border/30 px-4 pb-4 pt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* Status Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Status:</span>
+            {(["todo", "in_progress", "completed"] as TaskStatus[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => onStatusChange(task.id, s)}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+                  status === s
+                    ? `${STATUS_CONFIG[s].bg} ${STATUS_CONFIG[s].color} border-current/30 font-medium`
+                    : "border-border/30 text-muted-foreground hover:border-border/60"
+                }`}
+              >
+                {STATUS_CONFIG[s].label}
+              </button>
+            ))}
+          </div>
+
+          {/* Comments */}
+          {comments.length > 0 && (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {comments.map((c) => (
+                <div key={c.id} className="flex gap-2 p-2.5 rounded-lg bg-secondary/30 border border-border/20">
+                  <div className="h-6 w-6 rounded-full bg-neon/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <MessageSquare className="h-3 w-3 text-neon" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-foreground">{c.content}</p>
+                    <span className="text-[10px] text-muted-foreground mt-1 block">{formatCommentDate(c.created_at)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Comment */}
+          <div className="flex gap-2">
+            <Input
+              placeholder="Adicionar comentário..."
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmitComment()}
+              className="text-xs h-8 bg-secondary/30 border-border/30"
+            />
+            <Button
+              size="sm"
+              onClick={handleSubmitComment}
+              disabled={!commentText.trim() || submitting}
+              className="h-8 px-3 bg-neon text-accent-foreground hover:bg-neon/90"
+            >
+              {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// --- Main Page ---
+// --- New Task Dialog ---
+const NewTaskDialog = ({
+  open,
+  onOpenChange,
+  clientId,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  clientId: string;
+  onCreated: () => void;
+}) => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<string>("medium");
+  const [dueDate, setDueDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
+  const handleCreate = async () => {
+    if (!title.trim()) return;
+    setSubmitting(true);
+    const { error } = await supabase.from("tasks").insert([{
+      title: title.trim(),
+      description: description.trim() || null,
+      client_id: clientId,
+      priority: priority as any,
+      due_date: dueDate || null,
+      status: "todo",
+      is_completed: false,
+    }]);
+
+    if (error) {
+      toast.error("Erro ao criar tarefa");
+    } else {
+      toast.success("Tarefa criada!");
+      setTitle(""); setDescription(""); setPriority("medium"); setDueDate("");
+      onOpenChange(false);
+      onCreated();
+    }
+    setSubmitting(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border/50 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-foreground">Nova Tarefa</DialogTitle>
+          <DialogDescription className="text-muted-foreground">Adicione uma nova tarefa para este cliente.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">Título *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Criar dashboard de vendas" className="mt-1 bg-secondary/30 border-border/40" />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Descrição</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes da tarefa..." className="mt-1 bg-secondary/30 border-border/40 min-h-[60px]" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Prioridade</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger className="mt-1 bg-secondary/30 border-border/40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">🟢 Baixa</SelectItem>
+                  <SelectItem value="medium">🟡 Média</SelectItem>
+                  <SelectItem value="high">🔴 Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Prazo</Label>
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 bg-secondary/30 border-border/40" />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleCreate} disabled={!title.trim() || submitting} className="bg-neon text-accent-foreground hover:bg-neon/90">
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+            Criar Tarefa
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// --- Main Page ---
 const TasksPage = () => {
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [comments, setComments] = useState<TaskComment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [clientsRes, tasksRes] = await Promise.all([
-          supabase.from("clients").select("*").order("created_at", { ascending: false }),
-          supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-        ]);
-
-        if (clientsRes.data) setClients(clientsRes.data);
-        if (tasksRes.data) setTasks(tasksRes.data);
-
-        // Seleciona o primeiro cliente por padrão se houver
-        if (clientsRes.data && clientsRes.data.length > 0) {
-          setSelectedClientId(clientsRes.data[0].id);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-      } finally {
-        setLoading(false);
+  const fetchData = useCallback(async () => {
+    try {
+      const [clientsRes, tasksRes, commentsRes] = await Promise.all([
+        supabase.from("clients").select("*").order("created_at", { ascending: false }),
+        supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+        supabase.from("task_comments").select("*").order("created_at", { ascending: true }),
+      ]);
+      if (clientsRes.data) setClients(clientsRes.data);
+      if (tasksRes.data) setTasks(tasksRes.data);
+      if (commentsRes.data) setComments(commentsRes.data as TaskComment[]);
+      if (!selectedClientId && clientsRes.data?.length) {
+        setSelectedClientId(clientsRes.data[0].id);
       }
-    };
-    fetchData();
-  }, []);
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedClientId]);
 
-  // --- Handlers ---
-  const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
-    // Optimistic UI update
-    setTasks(
-      tasks.map((t) =>
-        t.id === taskId ? { ...t, is_completed: !currentStatus } : t,
-      ),
-    );
+  useEffect(() => { fetchData(); }, []);
 
-    // API Call (Descomente quando tiver certeza da coluna no Supabase: is_completed ou status)
-    /*
-    await supabase
-      .from("tasks")
-      .update({ is_completed: !currentStatus }) // ou status: 'completed'
-      .eq("id", taskId);
-    */
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed" } : t));
+    await supabase.from("tasks").update({ status: newStatus, is_completed: newStatus === "completed" } as any).eq("id", taskId);
+  };
+
+  const handleAddComment = async (taskId: string, content: string) => {
+    const { data, error } = await supabase.from("task_comments").insert([{ task_id: taskId, content }]).select();
+    if (!error && data) {
+      setComments((prev) => [...prev, ...(data as TaskComment[])]);
+    }
   };
 
   // --- Derived Data ---
   const filteredClients = useMemo(() => {
     return clients.filter(
-      (c) =>
-        c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+      (c) => c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [clients, searchTerm]);
 
   const activeClient = clients.find((c) => c.id === selectedClientId);
 
-  const activeTasks = useMemo(() => {
-    if (!selectedClientId) return { pending: [], completed: [] };
+  const groupedTasks = useMemo(() => {
+    if (!selectedClientId) return { todo: [], in_progress: [], completed: [] };
     const clientTasks = tasks.filter((t) => t.client_id === selectedClientId);
-
     return {
-      pending: clientTasks.filter((t) => !t.is_completed),
-      completed: clientTasks.filter((t) => !!t.is_completed),
+      todo: clientTasks.filter((t) => (t.status || "todo") === "todo"),
+      in_progress: clientTasks.filter((t) => t.status === "in_progress"),
+      completed: clientTasks.filter((t) => t.status === "completed" || (t.status !== "in_progress" && t.is_completed)),
     };
   }, [tasks, selectedClientId]);
+
+  const getClientCounts = useCallback((clientId: string) => {
+    const ct = tasks.filter((t) => t.client_id === clientId);
+    const inProgress = ct.filter((t) => t.status === "in_progress").length;
+    const todo = ct.filter((t) => (t.status || "todo") === "todo" && !t.is_completed).length;
+    const completed = ct.filter((t) => t.status === "completed" || (t.status !== "in_progress" && t.is_completed)).length;
+    return { inProgress, todo, completed, total: ct.length };
+  }, [tasks]);
 
   if (loading) {
     return (
       <div className="flex h-[calc(100vh-6rem)] gap-6 p-6">
         <div className="w-[350px] space-y-4">
           <Skeleton className="h-10 w-full" />
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
-          ))}
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
         </div>
         <div className="flex-1 space-y-6">
           <Skeleton className="h-12 w-64" />
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-xl" />
-            ))}
-          </div>
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-6rem)] gap-6 animate-in fade-in duration-500">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-6rem)] gap-0 animate-in fade-in duration-500">
       {/* --- Left Panel: Client List --- */}
-      <div className="w-full md:w-[380px] flex flex-col gap-4 shrink-0 border-r border-border/40 pr-2 md:pr-6">
-        {/* Header lateral */}
-        <div className="space-y-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <LayoutList className="text-neon h-6 w-6" />
-              Tarefas
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">Gerencie entregas por cliente.</p>
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-card/50 border-border/50"
-            />
-          </div>
+      <div className="w-full md:w-[340px] flex flex-col gap-3 shrink-0 border-r border-border/30 bg-card/10 p-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <LayoutList className="text-neon h-5 w-5" />
+            Tarefas
+          </h1>
+          <p className="text-muted-foreground text-xs mt-0.5">Gerencie entregas por cliente.</p>
         </div>
 
-        {/* Client List */}
-        <ScrollArea className="flex-1 -mr-4 pr-4">
-          <div className="space-y-2 pb-4">
-            {filteredClients.map((client) => {
-              // Calculando progresso para o card
-              const cTasks = tasks.filter((t) => t.client_id === client.id);
-              const completed = cTasks.filter((t) => !!t.is_completed).length;
-              const total = cTasks.length;
-              const pending = total - completed;
-              const progress = total === 0 ? 0 : (completed / total) * 100;
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-sm bg-secondary/30 border-border/30"
+          />
+        </div>
 
+        <ScrollArea className="flex-1 -mr-2 pr-2">
+          <div className="space-y-1.5 pb-4">
+            {filteredClients.map((client) => {
+              const counts = getClientCounts(client.id);
               const isSelected = selectedClientId === client.id;
 
               return (
                 <div
                   key={client.id}
                   onClick={() => setSelectedClientId(client.id)}
-                  className={`group cursor-pointer p-4 rounded-xl border transition-all duration-200 ${
+                  className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 ${
                     isSelected
-                      ? "bg-neon/5 border-neon/50 shadow-sm shadow-neon/10"
-                      : "bg-card/30 border-border/40 hover:bg-card/80 hover:border-border/80"
+                      ? "bg-neon/5 border-neon/40 shadow-sm shadow-neon/5"
+                      : "bg-transparent border-transparent hover:bg-card/50 hover:border-border/30"
                   }`}
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar className={`h-10 w-10 border ${isSelected ? "border-neon/50" : "border-border/50"}`}>
+                  <div className="flex items-center gap-3">
+                    <Avatar className={`h-9 w-9 border ${isSelected ? "border-neon/40" : "border-border/30"}`}>
                       <AvatarImage src={client.logo_url || undefined} />
-                      <AvatarFallback className="bg-secondary text-xs font-bold">
-                        {getInitials(client.company_name)}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-secondary text-[10px] font-bold">{getInitials(client.company_name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <h3 className={`font-semibold text-sm truncate ${isSelected ? "text-neon" : "text-foreground"}`}>
                         {client.company_name}
                       </h3>
-                      <p className="text-xs text-muted-foreground truncate">{client.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{client.name}</p>
                     </div>
-                    {pending > 0 && (
-                      <Badge variant="secondary" className="h-6 px-2 text-xs bg-background/50">
-                        {pending} pendentes
-                      </Badge>
-                    )}
                   </div>
 
-                  {/* Visual Progress Bar */}
-                  <div className="space-y-1.5 mt-2">
-                    <div className="flex justify-between text-[10px] text-muted-foreground font-medium">
-                      <span>Progresso</span>
-                      <span>
-                        {completed}/{total}
+                  {/* Counts instead of progress bar */}
+                  <div className="flex items-center gap-3 mt-2.5 ml-12">
+                    {counts.todo > 0 && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Circle className="h-2.5 w-2.5" /> {counts.todo}
                       </span>
-                    </div>
-                    <Progress
-                      value={progress}
-                      className="h-1.5 bg-background/50"
-                      
-                    />
+                    )}
+                    {counts.inProgress > 0 && (
+                      <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                        <PlayCircle className="h-2.5 w-2.5" /> {counts.inProgress}
+                      </span>
+                    )}
+                    {counts.completed > 0 && (
+                      <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="h-2.5 w-2.5" /> {counts.completed}
+                      </span>
+                    )}
+                    {counts.total === 0 && (
+                      <span className="text-[10px] text-muted-foreground/50">Sem tarefas</span>
+                    )}
                   </div>
                 </div>
               );
             })}
 
             {filteredClients.length === 0 && (
-              <div className="text-center p-6 text-muted-foreground text-sm border border-dashed border-border/50 rounded-xl">
+              <div className="text-center p-6 text-muted-foreground text-sm border border-dashed border-border/30 rounded-xl">
                 Nenhum cliente encontrado.
               </div>
             )}
@@ -276,88 +504,92 @@ const TasksPage = () => {
         </ScrollArea>
       </div>
 
-      {/* --- Right Panel: Active Client Tasks --- */}
-      <div className="flex-1 flex flex-col bg-card/20 border border-border/30 rounded-2xl overflow-hidden relative">
+      {/* --- Right Panel: Task Board --- */}
+      <div className="flex-1 flex flex-col overflow-hidden">
         {!activeClient ? (
-          // Empty State
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="h-20 w-20 bg-card rounded-full flex items-center justify-center mb-4 shadow-inner border border-border/50">
-              <Briefcase className="h-10 w-10 text-muted-foreground/50" />
+            <div className="h-16 w-16 bg-card rounded-full flex items-center justify-center mb-4 border border-border/30">
+              <Briefcase className="h-8 w-8 text-muted-foreground/40" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">Nenhum cliente selecionado</h2>
-            <p className="text-muted-foreground max-w-sm">
-              Selecione um cliente no painel lateral para visualizar, gerenciar ou adicionar novas tarefas à lista.
+            <h2 className="text-lg font-semibold mb-1 text-foreground">Nenhum cliente selecionado</h2>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Selecione um cliente para gerenciar tarefas.
             </p>
           </div>
         ) : (
-          // Active Task List
           <>
-            {/* Header da Todo List */}
-            <div className="p-6 border-b border-border/40 bg-card/40 backdrop-blur-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sticky top-0 z-10">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border/30 bg-card/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 border-2 border-neon/20 shadow-lg shadow-neon/5">
-                  <AvatarFallback className="bg-neon/10 text-neon font-bold text-lg">
+                <Avatar className="h-10 w-10 border-2 border-neon/20">
+                  <AvatarImage src={activeClient.logo_url || undefined} />
+                  <AvatarFallback className="bg-neon/10 text-neon font-bold text-sm">
                     {getInitials(activeClient.company_name)}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="text-xl font-bold">{activeClient.company_name}</h2>
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Clock className="h-3 w-3" />
-                    {activeTasks.pending.length} tarefas em aberto
-                  </p>
+                  <h2 className="text-lg font-bold text-foreground">{activeClient.company_name}</h2>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Circle className="h-3 w-3" /> {groupedTasks.todo.length} a fazer</span>
+                    <span className="flex items-center gap-1 text-blue-400"><PlayCircle className="h-3 w-3" /> {groupedTasks.in_progress.length} em andamento</span>
+                    <span className="flex items-center gap-1 text-emerald-400"><CheckCircle2 className="h-3 w-3" /> {groupedTasks.completed.length} concluídas</span>
+                  </div>
                 </div>
               </div>
-              <Button className="bg-neon text-neon-foreground hover:bg-neon/90 shadow-md transition-all active:scale-95">
-                <Plus className="h-4 w-4 mr-2" /> Nova Tarefa
+              <Button onClick={() => setNewTaskOpen(true)} className="bg-neon text-accent-foreground hover:bg-neon/90 active:scale-95 transition-all h-9 text-sm">
+                <Plus className="h-4 w-4 mr-1.5" /> Nova Tarefa
               </Button>
             </div>
 
-            <ScrollArea className="flex-1 p-6">
-              <div className="max-w-3xl mx-auto space-y-8 pb-10">
-                {/* Pending Tasks */}
-                <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                    A Fazer{" "}
-                    <Badge variant="secondary" className="bg-background/50">
-                      {activeTasks.pending.length}
-                    </Badge>
-                  </h3>
+            {/* Task Groups */}
+            <ScrollArea className="flex-1 px-6 py-4">
+              <div className="max-w-3xl mx-auto space-y-6 pb-10">
+                {(["todo", "in_progress", "completed"] as TaskStatus[]).map((statusKey) => {
+                  const statusTasks = groupedTasks[statusKey];
+                  const config = STATUS_CONFIG[statusKey];
 
-                  {activeTasks.pending.length === 0 ? (
-                    <div className="p-8 text-center border-2 border-dashed border-border/40 rounded-xl bg-card/10">
-                      <p className="text-muted-foreground text-sm">
-                        Tudo em dia! Nenhuma tarefa pendente para este cliente.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {activeTasks.pending.map((task) => (
-                        <TaskItem key={task.id} task={task} onToggle={handleToggleTask} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  return (
+                    <div key={statusKey}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className={config.color}>{config.icon}</span>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {config.label}
+                        </h3>
+                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-secondary/40">
+                          {statusTasks.length}
+                        </Badge>
+                      </div>
 
-                {/* Completed Tasks */}
-                {activeTasks.completed.length > 0 && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4">
-                    <Separator className="my-6 bg-border/40" />
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-                      Concluídas{" "}
-                      <Badge variant="secondary" className="bg-background/50">
-                        {activeTasks.completed.length}
-                      </Badge>
-                    </h3>
-                    <div className="space-y-1">
-                      {activeTasks.completed.map((task) => (
-                        <TaskItem key={task.id} task={task} onToggle={handleToggleTask} />
-                      ))}
+                      {statusTasks.length === 0 ? (
+                        <div className="p-4 text-center border border-dashed border-border/20 rounded-xl">
+                          <p className="text-muted-foreground/50 text-xs">Nenhuma tarefa.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {statusTasks.map((task) => (
+                            <TaskCard
+                              key={task.id}
+                              task={task}
+                              comments={comments.filter((c) => c.task_id === task.id)}
+                              onStatusChange={handleStatusChange}
+                              onAddComment={handleAddComment}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
             </ScrollArea>
+
+            {/* New Task Dialog */}
+            <NewTaskDialog
+              open={newTaskOpen}
+              onOpenChange={setNewTaskOpen}
+              clientId={activeClient.id}
+              onCreated={fetchData}
+            />
           </>
         )}
       </div>
