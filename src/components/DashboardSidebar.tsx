@@ -60,7 +60,7 @@ const DashboardSidebar = () => {
           className={cn(
             "object-contain transition-all duration-300 hover:scale-105",
             // Ícone aumentado para h-16 w-16 (64px) para ficar bem maior que os ícones do menu
-            isCollapsed ? "h-16 w-16 drop-shadow-[0_0_12px_rgba(0,255,128,0.3)]" : "h-24 w-auto",
+            isCollapsed ? "h-10 w-10 drop-shadow-[0_0_12px_rgba(0,255,128,0.3)]" : "h-20 w-auto",
           )}
         />
       </div>
