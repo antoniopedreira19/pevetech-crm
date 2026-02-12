@@ -4,8 +4,14 @@ import type { Tables } from "@/integrations/supabase/types";
 import {
   Search, Plus, CheckCircle2, Circle, Calendar, Clock, Briefcase,
   AlertCircle, LayoutList, MessageSquare, ChevronDown, ChevronRight,
-  Flame, ArrowRight, Send, Loader2, PlayCircle
+  Flame, ArrowRight, Send, Loader2, PlayCircle, GripVertical
 } from "lucide-react";
+import {
+  DndContext, closestCenter, DragEndEvent, DragOverEvent, DragStartEvent,
+  DragOverlay, useDroppable, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core";
+import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -74,8 +80,23 @@ const formatCommentDate = (dateString: string) => {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
 };
 
-// --- Task Card Component ---
-const TaskCard = ({
+// --- Droppable Column ---
+const DroppableColumn = ({ id, children }: { id: string; children: React.ReactNode }) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[60px] rounded-xl transition-all duration-200 ${
+        isOver ? "bg-neon/5 ring-1 ring-neon/20" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// --- Draggable Task Card Wrapper ---
+const DraggableTaskCard = ({
   task,
   comments,
   onStatusChange,
@@ -85,6 +106,48 @@ const TaskCard = ({
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, data: { status: task.status || "todo" } });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <TaskCard
+        task={task}
+        comments={comments}
+        onStatusChange={onStatusChange}
+        onAddComment={onAddComment}
+        dragListeners={listeners}
+      />
+    </div>
+  );
+};
+
+// --- Task Card Component ---
+const TaskCard = ({
+  task,
+  comments,
+  onStatusChange,
+  onAddComment,
+  dragListeners,
+}: {
+  task: Task;
+  comments: TaskComment[];
+  onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
+  onAddComment: (taskId: string, content: string) => void;
+  dragListeners?: any;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -118,7 +181,15 @@ const TaskCard = ({
       }`}
     >
       {/* Main Row */}
-      <div className="flex items-start gap-3 p-4">
+      <div className="flex items-start gap-2 p-4">
+        {/* Drag Handle */}
+        <button
+          {...dragListeners}
+          className="mt-1 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors opacity-0 group-hover:opacity-100"
+          tabIndex={-1}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
         {/* Status Toggle Button */}
         <button
           onClick={() => onStatusChange(task.id, nextStatus[status])}
@@ -342,7 +413,11 @@ const TasksPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  );
   const fetchData = useCallback(async () => {
     try {
       const [clientsRes, tasksRes, commentsRes] = await Promise.all([
@@ -377,7 +452,43 @@ const TasksPage = () => {
     }
   };
 
-  // --- Derived Data ---
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveTaskId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveTaskId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const overId = over.id as string;
+
+    // Check if dropped over a column
+    const targetStatus = (["todo", "in_progress", "completed"] as TaskStatus[]).includes(overId as TaskStatus)
+      ? (overId as TaskStatus)
+      : null;
+
+    if (targetStatus) {
+      const task = tasks.find((t) => t.id === taskId);
+      if (task && (task.status || "todo") !== targetStatus) {
+        handleStatusChange(taskId, targetStatus);
+      }
+    } else {
+      // Dropped over another task — get that task's status
+      const overTask = tasks.find((t) => t.id === overId);
+      if (overTask) {
+        const newStatus = (overTask.status || "todo") as TaskStatus;
+        const task = tasks.find((t) => t.id === taskId);
+        if (task && (task.status || "todo") !== newStatus) {
+          handleStatusChange(taskId, newStatus);
+        }
+      }
+    }
+  };
+
+  const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null;
+
   const filteredClients = useMemo(() => {
     return clients.filter(
       (c) => c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
@@ -541,46 +652,70 @@ const TasksPage = () => {
               </Button>
             </div>
 
-            {/* Task Groups */}
+            {/* Task Groups with Drag & Drop */}
             <ScrollArea className="flex-1 px-6 py-4">
-              <div className="max-w-3xl mx-auto space-y-6 pb-10">
-                {(["todo", "in_progress", "completed"] as TaskStatus[]).map((statusKey) => {
-                  const statusTasks = groupedTasks[statusKey];
-                  const config = STATUS_CONFIG[statusKey];
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="max-w-3xl mx-auto space-y-6 pb-10">
+                  {(["todo", "in_progress", "completed"] as TaskStatus[]).map((statusKey) => {
+                    const statusTasks = groupedTasks[statusKey];
+                    const config = STATUS_CONFIG[statusKey];
 
-                  return (
-                    <div key={statusKey}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className={config.color}>{config.icon}</span>
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          {config.label}
-                        </h3>
-                        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-secondary/40">
-                          {statusTasks.length}
-                        </Badge>
+                    return (
+                      <div key={statusKey}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={config.color}>{config.icon}</span>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {config.label}
+                          </h3>
+                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-secondary/40">
+                            {statusTasks.length}
+                          </Badge>
+                        </div>
+
+                        <DroppableColumn id={statusKey}>
+                          <SortableContext items={statusTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                            {statusTasks.length === 0 ? (
+                              <div className="p-4 text-center border border-dashed border-border/20 rounded-xl">
+                                <p className="text-muted-foreground/50 text-xs">Nenhuma tarefa.</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {statusTasks.map((task) => (
+                                  <DraggableTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    comments={comments.filter((c) => c.task_id === task.id)}
+                                    onStatusChange={handleStatusChange}
+                                    onAddComment={handleAddComment}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </SortableContext>
+                        </DroppableColumn>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      {statusTasks.length === 0 ? (
-                        <div className="p-4 text-center border border-dashed border-border/20 rounded-xl">
-                          <p className="text-muted-foreground/50 text-xs">Nenhuma tarefa.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {statusTasks.map((task) => (
-                            <TaskCard
-                              key={task.id}
-                              task={task}
-                              comments={comments.filter((c) => c.task_id === task.id)}
-                              onStatusChange={handleStatusChange}
-                              onAddComment={handleAddComment}
-                            />
-                          ))}
-                        </div>
-                      )}
+                <DragOverlay>
+                  {activeTask ? (
+                    <div className="opacity-90 rotate-1 scale-105">
+                      <TaskCard
+                        task={activeTask}
+                        comments={comments.filter((c) => c.task_id === activeTask.id)}
+                        onStatusChange={() => {}}
+                        onAddComment={() => {}}
+                      />
                     </div>
-                  );
-                })}
-              </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             </ScrollArea>
 
             {/* New Task Dialog */}
