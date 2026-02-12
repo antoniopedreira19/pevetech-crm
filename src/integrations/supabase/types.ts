@@ -178,6 +178,38 @@ export type Database = {
         }
         Relationships: []
       }
+      task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           client_id: string | null
@@ -187,6 +219,7 @@ export type Database = {
           id: string
           is_completed: boolean | null
           priority: Database["public"]["Enums"]["task_priority"] | null
+          status: string
           title: string
           user_id: string | null
         }
@@ -198,6 +231,7 @@ export type Database = {
           id?: string
           is_completed?: boolean | null
           priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: string
           title: string
           user_id?: string | null
         }
@@ -209,6 +243,7 @@ export type Database = {
           id?: string
           is_completed?: boolean | null
           priority?: Database["public"]["Enums"]["task_priority"] | null
+          status?: string
           title?: string
           user_id?: string | null
         }
