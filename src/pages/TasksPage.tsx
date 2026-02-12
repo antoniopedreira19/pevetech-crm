@@ -4,7 +4,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import {
   Search, Plus, CheckCircle2, Circle, Calendar, Clock, Briefcase,
   AlertCircle, LayoutList, MessageSquare, ChevronDown, ChevronRight,
-  Flame, ArrowRight, Send, Loader2, PlayCircle, GripVertical
+  Flame, ArrowRight, Send, Loader2, PlayCircle, GripVertical, Pencil, AlertTriangle
 } from "lucide-react";
 import {
   DndContext, closestCenter, DragEndEvent, DragOverEvent, DragStartEvent,
@@ -64,6 +64,11 @@ const PRIORITY_CONFIG = {
 // --- Helpers ---
 const getInitials = (name: string | null) => name ? name.substring(0, 2).toUpperCase() : "CL";
 
+const isOverdue = (dueDate?: string | null, status?: string) => {
+  if (!dueDate || status === "completed") return false;
+  return new Date(dueDate) < new Date(new Date().toDateString());
+};
+
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return null;
   const date = new Date(dateString);
@@ -101,11 +106,13 @@ const DraggableTaskCard = ({
   comments,
   onStatusChange,
   onAddComment,
+  onEdit,
 }: {
   task: Task;
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
+  onEdit: (task: Task) => void;
 }) => {
   const {
     attributes,
@@ -130,6 +137,7 @@ const DraggableTaskCard = ({
         onStatusChange={onStatusChange}
         onAddComment={onAddComment}
         dragListeners={listeners}
+        onEdit={onEdit}
       />
     </div>
   );
@@ -142,16 +150,19 @@ const TaskCard = ({
   onStatusChange,
   onAddComment,
   dragListeners,
+  onEdit,
 }: {
   task: Task;
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
   dragListeners?: any;
+  onEdit?: (task: Task) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const overdue = isOverdue(task.due_date, task.status as string);
 
   const status = (task.status as TaskStatus) || "todo";
   const priority = task.priority as keyof typeof PRIORITY_CONFIG | null;
@@ -236,6 +247,12 @@ const TaskCard = ({
                 {formatDate(task.due_date)}
               </Badge>
             )}
+            {overdue && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-red-500/40 text-red-400 bg-red-500/10">
+                <AlertTriangle className="h-3 w-3" />
+                Atrasada
+              </Badge>
+            )}
             {comments.length > 0 && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-border/30 text-muted-foreground">
                 <MessageSquare className="h-3 w-3" />
@@ -244,6 +261,17 @@ const TaskCard = ({
             )}
           </div>
         </div>
+
+        {/* Edit Button */}
+        {onEdit && (
+          <button
+            onClick={() => onEdit(task)}
+            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary/50 opacity-0 group-hover:opacity-100"
+            title="Editar tarefa"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
 
         {/* Expand Toggle */}
         <button
@@ -404,6 +432,101 @@ const NewTaskDialog = ({
   );
 };
 
+// --- Edit Task Dialog ---
+const EditTaskDialog = ({
+  open,
+  onOpenChange,
+  task,
+  onUpdated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  task: Task | null;
+  onUpdated: () => void;
+}) => {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<string>("medium");
+  const [dueDate, setDueDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (task) {
+      setTitle(task.title || "");
+      setDescription(task.description || "");
+      setPriority((task.priority as string) || "medium");
+      setDueDate(task.due_date ? task.due_date.split("T")[0] : "");
+    }
+  }, [task]);
+
+  const handleUpdate = async () => {
+    if (!title.trim() || !task) return;
+    setSubmitting(true);
+    const { error } = await supabase.from("tasks").update({
+      title: title.trim(),
+      description: description.trim() || null,
+      priority: priority as any,
+      due_date: dueDate || null,
+    } as any).eq("id", task.id);
+
+    if (error) {
+      toast.error("Erro ao atualizar tarefa");
+    } else {
+      toast.success("Tarefa atualizada!");
+      onOpenChange(false);
+      onUpdated();
+    }
+    setSubmitting(false);
+  };
+
+  if (!task) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border/50 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-foreground">Editar Tarefa</DialogTitle>
+          <DialogDescription className="text-muted-foreground">Atualize os detalhes da tarefa.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">Título *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 bg-secondary/30 border-border/40" />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Descrição</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 bg-secondary/30 border-border/40 min-h-[60px]" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Prioridade</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger className="mt-1 bg-secondary/30 border-border/40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">🟢 Baixa</SelectItem>
+                  <SelectItem value="medium">🟡 Média</SelectItem>
+                  <SelectItem value="high">🔴 Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Prazo</Label>
+              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 bg-secondary/30 border-border/40" />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleUpdate} disabled={!title.trim() || submitting} className="bg-neon text-accent-foreground hover:bg-neon/90">
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // --- Main Page ---
 const TasksPage = () => {
   const [loading, setLoading] = useState(true);
@@ -414,6 +537,7 @@ const TasksPage = () => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -692,6 +816,7 @@ const TasksPage = () => {
                                     comments={comments.filter((c) => c.task_id === task.id)}
                                     onStatusChange={handleStatusChange}
                                     onAddComment={handleAddComment}
+                                    onEdit={(t) => setEditingTask(t)}
                                   />
                                 ))}
                               </div>
@@ -724,6 +849,13 @@ const TasksPage = () => {
               onOpenChange={setNewTaskOpen}
               clientId={activeClient.id}
               onCreated={fetchData}
+            />
+            {/* Edit Task Dialog */}
+            <EditTaskDialog
+              open={!!editingTask}
+              onOpenChange={(v) => !v && setEditingTask(null)}
+              task={editingTask}
+              onUpdated={fetchData}
             />
           </>
         )}
