@@ -641,7 +641,7 @@ const TasksPage = () => {
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100vh-6rem)] gap-6 p-6">
+      <div className="flex h-full gap-6 p-6">
         <div className="w-[350px] space-y-4">
           <Skeleton className="h-10 w-full" />
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
@@ -655,7 +655,7 @@ const TasksPage = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-6rem)] gap-0 animate-in fade-in duration-500">
+    <div className="flex flex-col md:flex-row h-full gap-0 animate-in fade-in duration-500">
       {/* --- Left Panel: Client List --- */}
       <div className="w-full md:w-[340px] flex flex-col gap-3 shrink-0 border-r border-border/30 bg-card/10 p-4">
         <div>
