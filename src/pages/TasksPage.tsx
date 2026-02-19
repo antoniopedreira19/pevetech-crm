@@ -4,7 +4,8 @@ import type { Tables } from "@/integrations/supabase/types";
 import {
   Search, Plus, CheckCircle2, Circle, Calendar, Clock, Briefcase,
   AlertCircle, LayoutList, MessageSquare, ChevronDown, ChevronRight,
-  Flame, ArrowRight, Send, Loader2, PlayCircle, GripVertical, Pencil, AlertTriangle
+  Flame, ArrowRight, Send, Loader2, PlayCircle, GripVertical, Pencil, AlertTriangle,
+  Trash2, PanelLeftClose, PanelLeft
 } from "lucide-react";
 import {
   DndContext, closestCenter, DragEndEvent, DragOverEvent, DragStartEvent,
@@ -25,6 +26,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 // --- Types ---
@@ -66,23 +71,37 @@ const getInitials = (name: string | null) => name ? name.substring(0, 2).toUpper
 
 const isOverdue = (dueDate?: string | null, status?: string) => {
   if (!dueDate || status === "completed") return false;
-  return new Date(dueDate) < new Date(new Date().toDateString());
+  // Parse as local date to avoid timezone offset issues
+  const parts = dueDate.split("T")[0].split("-");
+  const dueDateLocal = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return dueDateLocal < today;
 };
 
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return null;
-  const date = new Date(dateString);
+  // Parse as local date to avoid timezone offset
+  const parts = dateString.split("T")[0].split("-");
+  const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (date.toDateString() === today.toDateString()) return "Hoje";
-  if (date.toDateString() === tomorrow.toDateString()) return "Amanhã";
+  if (date.getTime() === today.getTime()) return "Hoje";
+  if (date.getTime() === tomorrow.getTime()) return "Amanhã";
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
 };
 
 const formatCommentDate = (dateString: string) => {
   const date = new Date(dateString);
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+};
+
+// Convert local date string (YYYY-MM-DD) to ISO with noon time to avoid timezone shift
+const dateToTimestamp = (dateStr: string) => {
+  if (!dateStr) return null;
+  return `${dateStr}T12:00:00`;
 };
 
 // --- Droppable Column ---
@@ -107,12 +126,14 @@ const DraggableTaskCard = ({
   onStatusChange,
   onAddComment,
   onEdit,
+  onDelete,
 }: {
   task: Task;
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
   onEdit: (task: Task) => void;
+  onDelete: (task: Task) => void;
 }) => {
   const {
     attributes,
@@ -138,6 +159,7 @@ const DraggableTaskCard = ({
         onAddComment={onAddComment}
         dragListeners={listeners}
         onEdit={onEdit}
+        onDelete={onDelete}
       />
     </div>
   );
@@ -151,6 +173,7 @@ const TaskCard = ({
   onAddComment,
   dragListeners,
   onEdit,
+  onDelete,
 }: {
   task: Task;
   comments: TaskComment[];
@@ -158,6 +181,7 @@ const TaskCard = ({
   onAddComment: (taskId: string, content: string) => void;
   dragListeners?: any;
   onEdit?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [commentText, setCommentText] = useState("");
@@ -273,6 +297,17 @@ const TaskCard = ({
           </button>
         )}
 
+        {/* Delete Button */}
+        {onDelete && (
+          <button
+            onClick={() => onDelete(task)}
+            className="shrink-0 text-muted-foreground hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-500/10 opacity-0 group-hover:opacity-100"
+            title="Excluir tarefa"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+
         {/* Expand Toggle */}
         <button
           onClick={() => setExpanded(!expanded)}
@@ -370,7 +405,7 @@ const NewTaskDialog = ({
       description: description.trim() || null,
       client_id: clientId,
       priority: priority as any,
-      due_date: dueDate || null,
+      due_date: dateToTimestamp(dueDate),
       status: "todo",
       is_completed: false,
     }]);
@@ -466,7 +501,7 @@ const EditTaskDialog = ({
       title: title.trim(),
       description: description.trim() || null,
       priority: priority as any,
-      due_date: dueDate || null,
+      due_date: dateToTimestamp(dueDate),
     } as any).eq("id", task.id);
 
     if (error) {
@@ -538,6 +573,8 @@ const TasksPage = () => {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+  const [clientPanelCollapsed, setClientPanelCollapsed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -576,6 +613,25 @@ const TasksPage = () => {
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!deletingTask) return;
+    const taskId = deletingTask.id;
+    // Optimistic removal
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setDeletingTask(null);
+
+    // Delete comments first, then the task
+    await supabase.from("task_comments").delete().eq("task_id", taskId);
+    const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (error) {
+      toast.error("Erro ao excluir tarefa");
+      fetchData(); // Revert
+    } else {
+      toast.success("Tarefa excluída!");
+      setComments((prev) => prev.filter((c) => c.task_id !== taskId));
+    }
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTaskId(event.active.id as string);
   };
@@ -588,7 +644,6 @@ const TasksPage = () => {
     const taskId = active.id as string;
     const overId = over.id as string;
 
-    // Check if dropped over a column
     const targetStatus = (["todo", "in_progress", "completed"] as TaskStatus[]).includes(overId as TaskStatus)
       ? (overId as TaskStatus)
       : null;
@@ -599,7 +654,6 @@ const TasksPage = () => {
         handleStatusChange(taskId, targetStatus);
       }
     } else {
-      // Dropped over another task — get that task's status
       const overTask = tasks.find((t) => t.id === overId);
       if (overTask) {
         const newStatus = (overTask.status || "todo") as TaskStatus;
@@ -657,86 +711,109 @@ const TasksPage = () => {
   return (
     <div className="flex flex-col md:flex-row h-full gap-0 animate-in fade-in duration-500">
       {/* --- Left Panel: Client List --- */}
-      <div className="w-full md:w-[340px] flex flex-col gap-3 shrink-0 border-r border-border/30 bg-card/10 p-4">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <LayoutList className="text-neon h-5 w-5" />
-            Tarefas
-          </h1>
-          <p className="text-muted-foreground text-xs mt-0.5">Gerencie entregas por cliente.</p>
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Buscar cliente..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 h-9 text-sm bg-secondary/30 border-border/30"
-          />
-        </div>
-
-        <ScrollArea className="flex-1 -mr-2 pr-2">
-          <div className="space-y-1.5 pb-4">
-            {filteredClients.map((client) => {
-              const counts = getClientCounts(client.id);
-              const isSelected = selectedClientId === client.id;
-
-              return (
-                <div
-                  key={client.id}
-                  onClick={() => setSelectedClientId(client.id)}
-                  className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 ${
-                    isSelected
-                      ? "bg-neon/5 border-neon/40 shadow-sm shadow-neon/5"
-                      : "bg-transparent border-transparent hover:bg-card/50 hover:border-border/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className={`h-9 w-9 border ${isSelected ? "border-neon/40" : "border-border/30"}`}>
-                      <AvatarImage src={client.logo_url || undefined} />
-                      <AvatarFallback className="bg-secondary text-[10px] font-bold">{getInitials(client.company_name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-semibold text-sm truncate ${isSelected ? "text-neon" : "text-foreground"}`}>
-                        {client.company_name}
-                      </h3>
-                      <p className="text-[11px] text-muted-foreground truncate">{client.name}</p>
-                    </div>
-                  </div>
-
-                  {/* Counts instead of progress bar */}
-                  <div className="flex items-center gap-3 mt-2.5 ml-12">
-                    {counts.todo > 0 && (
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Circle className="h-2.5 w-2.5" /> {counts.todo}
-                      </span>
-                    )}
-                    {counts.inProgress > 0 && (
-                      <span className="text-[10px] text-blue-400 flex items-center gap-1">
-                        <PlayCircle className="h-2.5 w-2.5" /> {counts.inProgress}
-                      </span>
-                    )}
-                    {counts.completed > 0 && (
-                      <span className="text-[10px] text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="h-2.5 w-2.5" /> {counts.completed}
-                      </span>
-                    )}
-                    {counts.total === 0 && (
-                      <span className="text-[10px] text-muted-foreground/50">Sem tarefas</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {filteredClients.length === 0 && (
-              <div className="text-center p-6 text-muted-foreground text-sm border border-dashed border-border/30 rounded-xl">
-                Nenhum cliente encontrado.
+      <div className={`flex flex-col gap-3 shrink-0 border-r border-border/30 bg-card/10 transition-all duration-300 ${
+        clientPanelCollapsed ? "w-0 md:w-14 overflow-hidden p-2" : "w-full md:w-[340px] p-4"
+      }`}>
+        {clientPanelCollapsed ? (
+          <button
+            onClick={() => setClientPanelCollapsed(false)}
+            className="mx-auto mt-2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+            title="Expandir painel de clientes"
+          >
+            <PanelLeft className="h-5 w-5" />
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+                  <LayoutList className="text-neon h-5 w-5" />
+                  Tarefas
+                </h1>
+                <p className="text-muted-foreground text-xs mt-0.5">Gerencie entregas por cliente.</p>
               </div>
-            )}
-          </div>
-        </ScrollArea>
+              <button
+                onClick={() => setClientPanelCollapsed(true)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                title="Minimizar painel"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-9 text-sm bg-secondary/30 border-border/30"
+              />
+            </div>
+
+            <ScrollArea className="flex-1 -mr-2 pr-2">
+              <div className="space-y-1.5 pb-4">
+                {filteredClients.map((client) => {
+                  const counts = getClientCounts(client.id);
+                  const isSelected = selectedClientId === client.id;
+
+                  return (
+                    <div
+                      key={client.id}
+                      onClick={() => setSelectedClientId(client.id)}
+                      className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 ${
+                        isSelected
+                          ? "bg-neon/5 border-neon/40 shadow-sm shadow-neon/5"
+                          : "bg-transparent border-transparent hover:bg-card/50 hover:border-border/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className={`h-9 w-9 border ${isSelected ? "border-neon/40" : "border-border/30"}`}>
+                          <AvatarImage src={client.logo_url || undefined} />
+                          <AvatarFallback className="bg-secondary text-[10px] font-bold">{getInitials(client.company_name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`font-semibold text-sm truncate ${isSelected ? "text-neon" : "text-foreground"}`}>
+                            {client.company_name}
+                          </h3>
+                          <p className="text-[11px] text-muted-foreground truncate">{client.name}</p>
+                        </div>
+                      </div>
+
+                      {/* Counts */}
+                      <div className="flex items-center gap-3 mt-2.5 ml-12">
+                        {counts.todo > 0 && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Circle className="h-2.5 w-2.5" /> {counts.todo}
+                          </span>
+                        )}
+                        {counts.inProgress > 0 && (
+                          <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                            <PlayCircle className="h-2.5 w-2.5" /> {counts.inProgress}
+                          </span>
+                        )}
+                        {counts.completed > 0 && (
+                          <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="h-2.5 w-2.5" /> {counts.completed}
+                          </span>
+                        )}
+                        {counts.total === 0 && (
+                          <span className="text-[10px] text-muted-foreground/50">Sem tarefas</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredClients.length === 0 && (
+                  <div className="text-center p-6 text-muted-foreground text-sm border border-dashed border-border/30 rounded-xl">
+                    Nenhum cliente encontrado.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </>
+        )}
       </div>
 
       {/* --- Right Panel: Task Board --- */}
@@ -817,6 +894,7 @@ const TasksPage = () => {
                                     onStatusChange={handleStatusChange}
                                     onAddComment={handleAddComment}
                                     onEdit={(t) => setEditingTask(t)}
+                                    onDelete={(t) => setDeletingTask(t)}
                                   />
                                 ))}
                               </div>
@@ -857,6 +935,23 @@ const TasksPage = () => {
               task={editingTask}
               onUpdated={fetchData}
             />
+            {/* Delete Confirmation */}
+            <AlertDialog open={!!deletingTask} onOpenChange={(v) => !v && setDeletingTask(null)}>
+              <AlertDialogContent className="bg-card border-border/50">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir tarefa</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir "<strong>{deletingTask?.title}</strong>"? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </>
         )}
       </div>
