@@ -139,13 +139,44 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           ai_diagnostic: string | null
           company: string | null
           created_at: string | null
+          deal_value: number | null
           email: string | null
           id: string
+          loss_reason: string | null
           message: string | null
           name: string
           notes: string | null
@@ -156,8 +187,10 @@ export type Database = {
           ai_diagnostic?: string | null
           company?: string | null
           created_at?: string | null
+          deal_value?: number | null
           email?: string | null
           id?: string
+          loss_reason?: string | null
           message?: string | null
           name: string
           notes?: string | null
@@ -168,8 +201,10 @@ export type Database = {
           ai_diagnostic?: string | null
           company?: string | null
           created_at?: string | null
+          deal_value?: number | null
           email?: string | null
           id?: string
+          loss_reason?: string | null
           message?: string | null
           name?: string
           notes?: string | null
