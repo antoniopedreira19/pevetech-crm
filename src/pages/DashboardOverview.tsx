@@ -225,7 +225,9 @@ const DashboardOverview = () => {
     const activeClients = clients.filter((c) => c.status === "active");
     const mrr = activeClients.reduce((sum, c) => sum + (Number(c.monthly_value) || 0), 0);
     const avgTicket = activeClients.length > 0 ? mrr / activeClients.length : 0;
-    const pipelineValue = leads.length * avgTicket * 0.2;
+    // Pipeline value = sum of deal_value from active pipeline leads (not closed)
+    const pipelineLeads = leads.filter((l) => l.status && !["closed_won", "closed_lost"].includes(l.status));
+    const pipelineValue = pipelineLeads.reduce((sum, l) => sum + (Number((l as any).deal_value) || 0), 0);
 
     return { mrr, activeClients: activeClients.length, avgTicket, pipelineValue, totalLeads: leads.length };
   }, [clients, leads]);
