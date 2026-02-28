@@ -11,8 +11,6 @@ import {
   ArrowDown,
   Plus,
   Building2,
-  User,
-  Briefcase,
   DollarSign,
   Phone,
   Pencil,
@@ -40,7 +38,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -87,8 +84,6 @@ const getInitials = (name: string | null) => {
 };
 
 type Align = "left" | "center" | "right";
-
-const alignTextClass: Record<Align, string> = { left: "text-left", center: "text-center", right: "text-right" };
 const alignJustifyClass: Record<Align, string> = {
   left: "justify-start",
   center: "justify-center",
@@ -102,7 +97,7 @@ const SortableHeader = ({ label, column, align }: { label: string; column: any; 
       variant="ghost"
       onClick={() => column.toggleSorting(isSorted === "asc")}
       className={cn(
-        "h-8 px-0 w-full hover:bg-transparent group font-medium text-muted-foreground hover:text-foreground",
+        "h-10 px-0 w-full hover:bg-transparent group font-semibold text-muted-foreground hover:text-foreground text-[11px] uppercase tracking-wider",
         "flex",
         alignJustifyClass[align],
       )}
@@ -127,7 +122,6 @@ const StatusBadge = ({ status }: { status: string | null }) => {
     lead: "bg-amber-500/10 text-amber-500 border-amber-500/20",
     churned: "bg-red-500/10 text-red-500 border-red-500/20",
   };
-
   const labelMap: Record<string, string> = {
     active: "Ativo",
     inactive: "Inativo",
@@ -135,17 +129,16 @@ const StatusBadge = ({ status }: { status: string | null }) => {
     churned: "Cancelado",
     lead: "Lead",
   };
-
   const badgeStyle = styles[status || "lead"] || styles.lead;
   const label = labelMap[status || "lead"] || "Lead";
   return (
-    <Badge variant="outline" className={`font-medium border ${badgeStyle}`}>
+    <Badge variant="outline" className={`font-medium border px-3 py-1 text-xs ${badgeStyle}`}>
       {label}
     </Badge>
   );
 };
 
-// --- MRR Update Modal ---
+// --- Modals and Drawers ---
 const MrrUpdateModal = ({
   open,
   onOpenChange,
@@ -178,30 +171,30 @@ const MrrUpdateModal = ({
   const handleSubmit = async () => {
     if (!client) return;
     if (!newValue || parsedNew === currentValue) {
-      toast.error("Informe um novo valor diferente do atual.");
+      toast.error("Informe um novo valor.");
       return;
     }
     if (!reason.trim()) {
-      toast.error("Informe o motivo da alteração.");
+      toast.error("Informe o motivo.");
       return;
     }
     setIsSubmitting(true);
     try {
-      const { error: histError } = await supabase.from("client_mrr_history" as any).insert([
-        {
-          client_id: client.id,
-          previous_value: currentValue,
-          new_value: parsedNew,
-          reason: reason.trim(),
-          effective_date: new Date(effectiveDate).toISOString(),
-        },
-      ]);
+      const { error: histError } = await supabase
+        .from("client_mrr_history" as any)
+        .insert([
+          {
+            client_id: client.id,
+            previous_value: currentValue,
+            new_value: parsedNew,
+            reason: reason.trim(),
+            effective_date: new Date(effectiveDate).toISOString(),
+          },
+        ]);
       if (histError) throw histError;
-
       const { error } = await supabase.from("clients").update({ monthly_value: parsedNew }).eq("id", client.id);
       if (error) throw error;
-
-      toast.success("MRR atualizado com sucesso!");
+      toast.success("MRR atualizado!");
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -212,26 +205,20 @@ const MrrUpdateModal = ({
   };
 
   if (!client) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="text-neon" size={20} />
-            Alterar MRR
+            <DollarSign className="text-neon" size={20} /> Alterar MRR
           </DialogTitle>
           <DialogDescription>{client.company_name}</DialogDescription>
         </DialogHeader>
-
         <div className="space-y-5 py-2">
-          {/* Current value display */}
           <div className="rounded-lg border border-border/50 bg-card/50 p-4">
             <p className="text-xs text-muted-foreground mb-1">Valor Atual</p>
             <p className="text-2xl font-bold font-mono text-foreground">{formatCurrency(currentValue)}</p>
           </div>
-
-          {/* New value input */}
           <div className="space-y-2">
             <Label>Novo Valor (R$) *</Label>
             <Input
@@ -258,8 +245,6 @@ const MrrUpdateModal = ({
               </div>
             )}
           </div>
-
-          {/* Effective date */}
           <div className="space-y-2">
             <Label>Data de Vigência *</Label>
             <Input
@@ -269,19 +254,16 @@ const MrrUpdateModal = ({
               className="bg-card/50"
             />
           </div>
-
-          {/* Reason */}
           <div className="space-y-2">
             <Label>Motivo da Alteração *</Label>
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex: Novo módulo contratado, Reajuste anual..."
+              placeholder="Ex: Novo módulo..."
               className="bg-card/50"
             />
           </div>
         </div>
-
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
@@ -299,7 +281,6 @@ const MrrUpdateModal = ({
   );
 };
 
-// --- Form Drawer ---
 const ClientFormDrawer = ({
   open,
   onOpenChange,
@@ -312,8 +293,7 @@ const ClientFormDrawer = ({
   client?: Client | null;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [contractFile, setContractFile] = useState<File | null>(null); // Estado para o arquivo PDF
-
+  const [contractFile, setContractFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     company_name: "",
@@ -329,7 +309,7 @@ const ClientFormDrawer = ({
 
   useEffect(() => {
     if (open) {
-      setContractFile(null); // Limpa o arquivo selecionado ao abrir
+      setContractFile(null);
       if (client) {
         setFormData({
           name: client.name || "",
@@ -365,26 +345,15 @@ const ClientFormDrawer = ({
     setIsSubmitting(true);
     try {
       let finalContractUrl = formData.contract_url;
-
-      // Se o usuário anexou um arquivo, fazemos o upload para o bucket
       if (contractFile) {
         const fileExt = contractFile.name.split(".").pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-
         const { error: uploadError } = await supabase.storage.from("contrato_clientes").upload(fileName, contractFile);
-
-        if (uploadError) {
-          throw new Error(`Erro ao subir contrato: ${uploadError.message}`);
-        }
-
-        // Pega a URL Pública gerada pelo Supabase
+        if (uploadError) throw new Error(`Erro ao subir contrato: ${uploadError.message}`);
         const { data: publicUrlData } = supabase.storage.from("contrato_clientes").getPublicUrl(fileName);
-
         finalContractUrl = publicUrlData.publicUrl;
       }
-
       const payload = { ...formData, status: formData.status as any, contract_url: finalContractUrl };
-
       if (client) {
         const { error } = await supabase.from("clients").update(payload).eq("id", client.id);
         if (error) throw error;
@@ -392,17 +361,18 @@ const ClientFormDrawer = ({
       } else {
         const { data: newClient, error } = await supabase.from("clients").insert([payload]).select().single();
         if (error) throw error;
-        if (newClient) {
-          await supabase.from("client_mrr_history" as any).insert([
-            {
-              client_id: newClient.id,
-              previous_value: 0,
-              new_value: formData.monthly_value,
-              reason: "Cadastro inicial",
-              effective_date: new Date().toISOString(),
-            },
-          ]);
-        }
+        if (newClient)
+          await supabase
+            .from("client_mrr_history" as any)
+            .insert([
+              {
+                client_id: newClient.id,
+                previous_value: 0,
+                new_value: formData.monthly_value,
+                reason: "Cadastro inicial",
+                effective_date: new Date().toISOString(),
+              },
+            ]);
         toast.success("Cliente cadastrado!");
       }
       onSuccess();
@@ -423,7 +393,6 @@ const ClientFormDrawer = ({
               <Building2 className="text-neon" /> {client ? "Editar Dados" : "Novo Cliente"}
             </SheetTitle>
           </SheetHeader>
-
           <div className="p-6 space-y-6">
             <div className="space-y-4">
               <Label>Nome da Empresa *</Label>
@@ -452,9 +421,7 @@ const ClientFormDrawer = ({
                 </div>
               </div>
             </div>
-
             <Separator />
-
             <div className="space-y-4">
               <Label>Nome do Responsável *</Label>
               <Input
@@ -483,10 +450,8 @@ const ClientFormDrawer = ({
                 </div>
               </div>
             </div>
-
             <Separator />
 
-            {/* NOVO CAMPO HÍBRIDO: Link ou Upload do Contrato */}
             <div className="space-y-1">
               <Label className="flex items-center gap-2">
                 <FileText size={14} className="text-muted-foreground" /> Contrato
@@ -508,9 +473,7 @@ const ClientFormDrawer = ({
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     accept=".pdf,.doc,.docx"
                     onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setContractFile(e.target.files[0]);
-                      }
+                      if (e.target.files && e.target.files[0]) setContractFile(e.target.files[0]);
                     }}
                   />
                   <Button
@@ -537,7 +500,6 @@ const ClientFormDrawer = ({
             </div>
 
             <Separator />
-
             {client && (
               <div className="space-y-1">
                 <Label>MRR Atual</Label>
@@ -559,7 +521,6 @@ const ClientFormDrawer = ({
                 />
               </div>
             )}
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label>Status</Label>
@@ -586,7 +547,6 @@ const ClientFormDrawer = ({
               </div>
             </div>
           </div>
-
           <SheetFooter className="p-6 border-t border-border/50 sticky bottom-0 bg-background/95">
             <Button
               type="submit"
@@ -606,7 +566,7 @@ const ClientFormDrawer = ({
 const ClientsPage = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<Client[]>([]);
-  const [sorting, setSorting] = useState<SortingState>([{ id: "monthly_value", desc: true }]); // Ordenação default por MRR decrescente
+  const [sorting, setSorting] = useState<SortingState>([{ id: "monthly_value", desc: true }]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isMrrModalOpen, setIsMrrModalOpen] = useState(false);
@@ -650,23 +610,27 @@ const ClientsPage = () => {
         accessorFn: (row) => row.company_name,
         header: ({ column }) => <SortableHeader label="Empresa" column={column} align="left" />,
         cell: ({ row }) => (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 border border-border/50">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-11 w-11 border-2 border-white/5 shadow-sm">
               <AvatarImage src={row.original.logo_url || undefined} />
-              <AvatarFallback className="bg-secondary text-xs font-bold">
+              <AvatarFallback className="bg-card font-bold text-muted-foreground">
                 {getInitials(row.original.company_name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="font-semibold text-[14px] text-foreground">{row.original.company_name}</span>
-              <span className="text-[11px] text-muted-foreground">{row.original.setor}</span>
+              <span className="font-bold text-base text-foreground">{row.original.company_name}</span>
+              <span className="text-xs text-muted-foreground">{row.original.setor}</span>
             </div>
           </div>
         ),
       },
       {
         accessorKey: "status",
-        header: ({ column }) => <div className="text-center w-full">Status</div>,
+        header: ({ column }) => (
+          <div className="text-center w-full uppercase text-[11px] tracking-wider text-muted-foreground font-semibold">
+            Status
+          </div>
+        ),
         cell: ({ row }) => (
           <div className="flex justify-center">
             <StatusBadge status={row.getValue("status")} />
@@ -677,20 +641,24 @@ const ClientsPage = () => {
         id: "contact_info",
         header: "Contato Principal",
         cell: ({ row }) => (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[13px] font-medium text-foreground">{row.original.name}</span>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Phone size={10} className="text-neon/70" /> {formatPhoneNumber(row.original.phone)}
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold text-foreground">{row.original.name}</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Phone size={12} className="text-neon/70" /> {formatPhoneNumber(row.original.phone)}
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <Mail size={10} className="text-neon/70" /> {row.original.email || "Sem e-mail"}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Mail size={12} className="text-neon/70" /> {row.original.email || "Sem e-mail"}
             </div>
           </div>
         ),
       },
       {
         id: "contract",
-        header: ({ column }) => <div className="text-center w-full">Contrato</div>,
+        header: ({ column }) => (
+          <div className="text-center w-full uppercase text-[11px] tracking-wider text-muted-foreground font-semibold">
+            Contrato
+          </div>
+        ),
         cell: ({ row }) => {
           const url = row.original.contract_url;
           if (!url) {
@@ -698,7 +666,7 @@ const ClientsPage = () => {
               <div className="flex justify-center">
                 <Badge
                   variant="outline"
-                  className="bg-card/20 border-border/30 text-muted-foreground/50 font-normal text-[10px] px-2 py-0.5 shadow-none"
+                  className="bg-card/20 border-white/5 text-muted-foreground/50 font-normal text-[11px] px-3 py-1 shadow-none"
                 >
                   Nenhum
                 </Badge>
@@ -710,9 +678,9 @@ const ClientsPage = () => {
               <a href={url} target="_blank" rel="noopener noreferrer" className="block">
                 <Badge
                   variant="outline"
-                  className="bg-neon/5 border-neon/30 text-neon font-medium text-[10px] px-2 py-0.5 hover:bg-neon/10 hover:border-neon/60 hover:shadow-[0_0_10px_rgba(0,255,128,0.2)] transition-all cursor-pointer flex items-center gap-1"
+                  className="bg-neon/5 border-neon/30 text-neon font-medium text-[11px] px-3 py-1 hover:bg-neon/10 hover:border-neon/60 hover:shadow-[0_0_15px_rgba(0,255,128,0.2)] transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  <FileText size={10} /> Acessar <ExternalLink size={8} className="ml-0.5 opacity-70" />
+                  <FileText size={12} /> Ver Contrato <ExternalLink size={10} className="ml-0.5 opacity-70" />
                 </Badge>
               </a>
             </div>
@@ -723,7 +691,7 @@ const ClientsPage = () => {
         accessorKey: "monthly_value",
         header: ({ column }) => <SortableHeader label="MRR" column={column} align="right" />,
         cell: ({ row }) => (
-          <div className="text-right font-mono text-neon font-bold tracking-tight">
+          <div className="text-right font-mono text-neon font-bold text-lg tracking-tight">
             {formatCurrency(row.original.monthly_value)}
           </div>
         ),
@@ -735,17 +703,17 @@ const ClientsPage = () => {
           <div className="flex justify-end">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
-                  <MoreHorizontal size={16} />
+                <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-white hover:bg-white/5">
+                  <MoreHorizontal size={18} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-card/95 backdrop-blur-xl border-border/50">
+              <DropdownMenuContent align="end" className="bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 shadow-2xl">
                 <DropdownMenuItem
                   onClick={() => {
                     setSelectedClient(row.original);
                     setIsDrawerOpen(true);
                   }}
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:bg-white/5"
                 >
                   <Pencil className="mr-2 h-4 w-4" /> Editar Dados
                 </DropdownMenuItem>
@@ -754,16 +722,16 @@ const ClientsPage = () => {
                     setSelectedClient(row.original);
                     setIsMrrModalOpen(true);
                   }}
-                  className="cursor-pointer"
+                  className="cursor-pointer hover:bg-white/5"
                 >
                   <DollarSign className="mr-2 h-4 w-4" /> Alterar MRR
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-border/40" />
+                <DropdownMenuSeparator className="bg-white/5" />
                 <DropdownMenuItem
                   onClick={() => handleInactivate(row.original)}
-                  className="text-red-400 focus:text-red-500 focus:bg-red-500/10 cursor-pointer"
+                  className="text-red-400 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors"
                 >
-                  <UserX className="mr-2 h-4 w-4" /> Inativar
+                  <UserX className="mr-2 h-4 w-4" /> Inativar Cliente
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -787,28 +755,39 @@ const ClientsPage = () => {
 
   if (loading)
     return (
-      <div className="p-8">
-        <Skeleton className="h-[400px] w-full rounded-2xl bg-card/20" />
+      <div className="p-8 h-full flex flex-col">
+        <Skeleton className="h-[500px] w-full rounded-2xl bg-card/20" />
       </div>
     );
 
   return (
-    <div className="space-y-6 p-6 md:p-8 animate-in fade-in duration-500 max-w-[1400px] mx-auto">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border/20 pb-5">
+    <div className="flex flex-col h-[calc(100vh-2rem)] p-4 md:p-6 animate-in fade-in duration-500 max-w-[1600px] mx-auto">
+      {/* CSS Mágico para as Scrollbars Premium */}
+      <style>{`
+        .premium-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .premium-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
+        .premium-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .premium-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 128, 0.4); }
+      `}</style>
+
+      {/* HEADER DA PÁGINA */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 text-foreground">
-            <Building2 className="text-neon drop-shadow-[0_0_8px_rgba(0,255,128,0.5)]" /> Carteira de Clientes
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3 text-white">
+            <Building2 className="text-neon drop-shadow-[0_0_12px_rgba(0,255,128,0.5)]" /> Carteira de Clientes
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">Gerencie contratos, MRR e informações de contato.</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Gerencie contratos, receita e informações vitais da sua base.
+          </p>
         </div>
         <div className="flex w-full md:w-auto gap-3">
-          <div className="relative w-full md:w-64">
+          <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar empresa..."
+              placeholder="Pesquisar por empresa..."
               value={(table.getColumn("company_info")?.getFilterValue() as string) ?? ""}
               onChange={(e) => table.getColumn("company_info")?.setFilterValue(e.target.value)}
-              className="pl-9 bg-card/30 border-border/50 focus-visible:ring-neon/30"
+              className="pl-9 bg-[#0a0a0a]/50 border-white/10 focus-visible:ring-neon/40 h-10 shadow-inner"
             />
           </div>
           <Button
@@ -816,35 +795,33 @@ const ClientsPage = () => {
               setSelectedClient(null);
               setIsDrawerOpen(true);
             }}
-            className="bg-neon text-neon-foreground font-bold shadow-[0_0_15px_rgba(0,255,128,0.2)] hover:scale-105 transition-all shrink-0"
+            className="bg-neon text-black font-bold shadow-[0_0_20px_rgba(0,255,128,0.25)] hover:scale-105 transition-all shrink-0 h-10 px-6"
           >
-            <Plus size={16} className="mr-2" /> Novo Cliente
+            <Plus size={18} className="mr-2" /> Novo Cliente
           </Button>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/30 bg-card/20 backdrop-blur-md overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-card/50 border-b border-border/30">
+      {/* TABELA DATA GRID (FULL HEIGHT) */}
+      <div className="flex-1 min-h-0 rounded-2xl border border-white/5 bg-[#050505]/60 backdrop-blur-xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-auto premium-scrollbar relative">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-[#0a0a0a]/95 backdrop-blur-md border-b border-white/10 sticky top-0 z-20">
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id}>
                   {hg.headers.map((h) => (
-                    <th
-                      key={h.id}
-                      className="px-6 py-4 text-left font-medium text-muted-foreground uppercase text-[10px] tracking-widest"
-                    >
+                    <th key={h.id} className="px-6 py-4 font-semibold text-muted-foreground">
                       {flexRender(h.column.columnDef.header, h.getContext())}
                     </th>
                   ))}
                 </tr>
               ))}
             </thead>
-            <tbody className="divide-y divide-border/20">
+            <tbody className="divide-y divide-white/5">
               {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-card/60 transition-colors group">
+                <tr key={row.id} className="hover:bg-white/[0.02] transition-colors group">
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-6 py-4">
+                    <td key={cell.id} className="px-6 py-5">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -852,8 +829,12 @@ const ClientsPage = () => {
               ))}
               {table.getRowModel().rows.length === 0 && (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
-                    Nenhum cliente encontrado.
+                  <td colSpan={columns.length} className="px-6 py-20 text-center">
+                    <div className="flex flex-col items-center justify-center opacity-60">
+                      <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-lg font-semibold text-white">Nenhum cliente encontrado.</p>
+                      <p className="text-muted-foreground text-sm mt-1">Ajuste os filtros ou crie um novo cliente.</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -862,6 +843,7 @@ const ClientsPage = () => {
         </div>
       </div>
 
+      {/* MODALS */}
       <ClientFormDrawer
         open={isDrawerOpen}
         onOpenChange={setIsDrawerOpen}
