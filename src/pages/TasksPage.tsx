@@ -27,7 +27,6 @@ import {
   PanelLeft,
   Globe,
   AlignLeft,
-  Filter,
 } from "lucide-react";
 import {
   DndContext,
@@ -198,6 +197,7 @@ const DraggableTaskCard = ({
   comments,
   onStatusChange,
   onAddComment,
+  onDeleteComment,
   onEdit,
   onDelete,
 }: {
@@ -206,6 +206,7 @@ const DraggableTaskCard = ({
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
+  onDeleteComment: (commentId: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }) => {
@@ -229,6 +230,7 @@ const DraggableTaskCard = ({
         comments={comments}
         onStatusChange={onStatusChange}
         onAddComment={onAddComment}
+        onDeleteComment={onDeleteComment}
         dragListeners={listeners}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -244,6 +246,7 @@ const TaskCard = ({
   comments,
   onStatusChange,
   onAddComment,
+  onDeleteComment,
   dragListeners,
   onEdit,
   onDelete,
@@ -253,6 +256,7 @@ const TaskCard = ({
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
+  onDeleteComment: (commentId: string) => void;
   dragListeners?: any;
   onEdit?: (task: Task) => void;
   onDelete?: (task: Task) => void;
@@ -421,16 +425,26 @@ const TaskCard = ({
           {comments.length > 0 && (
             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 premium-scrollbar">
               {comments.map((c) => (
-                <div key={c.id} className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
+                <div
+                  key={c.id}
+                  className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/5 relative group/comment"
+                >
                   <div className="h-6 w-6 rounded-full bg-neon/10 flex items-center justify-center shrink-0 mt-0.5">
                     <MessageSquare className="h-3 w-3 text-neon" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-6">
                     <p className="text-xs text-white/90 leading-relaxed">{c.content}</p>
                     <span className="text-[10px] text-muted-foreground/60 mt-1 block">
                       {formatCommentDate(c.created_at)}
                     </span>
                   </div>
+                  <button
+                    onClick={() => onDeleteComment(c.id)}
+                    className="absolute top-2 right-2 p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover/comment:opacity-100"
+                    title="Excluir comentário"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -459,13 +473,14 @@ const TaskCard = ({
   );
 };
 
-// --- Dialogs (MANTIDOS IDENTICOS AOS ANTERIORES - OCULTADOS POR BREVIDADE MAS VOCE DEVE MANTE-LOS NO SEU ARQUIVO) ---
+// --- Dialogs ---
 const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("medium");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
   const [selectedClientId, setSelectedClientId] = useState("");
 
   useEffect(() => {
@@ -697,7 +712,7 @@ const TasksPage = () => {
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | "all">("all");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all"); // NOVO ESTADO DE FILTRO
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -743,6 +758,17 @@ const TasksPage = () => {
       .insert([{ task_id: taskId, content }])
       .select();
     if (!error && data) setComments((prev) => [...prev, ...(data as TaskComment[])]);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    const { error } = await supabase.from("task_comments").delete().eq("id", commentId);
+    if (error) {
+      toast.error("Erro ao excluir comentário");
+      fetchData(); // reverte
+    } else {
+      toast.success("Comentário removido!");
+    }
   };
 
   const handleDeleteTask = async () => {
@@ -815,6 +841,7 @@ const TasksPage = () => {
     // 1. Configuração de Datas Base
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const timeToday = today.getTime();
 
     const endOfToday = new Date(today);
     endOfToday.setHours(23, 59, 59, 999);
@@ -834,38 +861,53 @@ const TasksPage = () => {
     if (dateFilter !== "all") {
       relevantTasks = relevantTasks.filter((t) => {
         const tDate = parseLocalDate(t.due_date);
-        if (!tDate) return false; // Se tiver filtro exigimos data
-        if (dateFilter === "today") return tDate <= endOfToday; // Hoje (Inclui Atrasadas)
-        if (dateFilter === "this_week") return tDate <= endOfThisWeek; // Essa semana (Inclui hoje e atrasadas)
-        if (dateFilter === "next_week") return tDate > endOfThisWeek && tDate <= endOfNextWeek; // Exatamente próxima semana
+        if (!tDate) return false;
+
+        const tTime = tDate.getTime();
+        if (dateFilter === "today") return tTime <= endOfToday.getTime(); // Hoje (Inclui Atrasadas)
+        if (dateFilter === "this_week") return tTime <= endOfThisWeek.getTime(); // Essa semana (Inclui hoje e atrasadas)
+        if (dateFilter === "next_week") return tTime > endOfThisWeek.getTime() && tTime <= endOfNextWeek.getTime(); // Próxima semana
         return true;
       });
     }
 
-    // 3. Aplicação da Ordenação (Data Ascendente -> Prioridade Descendente)
+    // 3. Aplicação da Ordenação (Inteligência Absoluta)
     relevantTasks.sort((a, b) => {
       const dateA = parseLocalDate(a.due_date);
       const dateB = parseLocalDate(b.due_date);
 
-      // Critério Primário: Data
+      // Categorias de urgência
+      const getCategory = (d: Date | null) => {
+        if (!d) return 4; // Sem data
+        const time = d.getTime();
+        if (time < timeToday) return 1; // Atrasadas
+        if (time === timeToday) return 2; // Hoje
+        return 3; // Futuro
+      };
+
+      const catA = getCategory(dateA);
+      const catB = getCategory(dateB);
+
+      // Regra 1: Categoria dita a ordem principal
+      if (catA !== catB) return catA - catB;
+
+      // Regra 2: Mesma Categoria, desempate por Data
       if (dateA && dateB) {
-        if (dateA.getTime() !== dateB.getTime()) {
-          return dateA.getTime() - dateB.getTime();
+        if (catA === 1) {
+          // Atrasadas: Descending (Mais recente atraso primeiro) -> Ex: 27/fev vem antes de 02/fev
+          if (dateA.getTime() !== dateB.getTime()) return dateB.getTime() - dateA.getTime();
+        } else {
+          // Hoje/Futuro: Ascending (Mais próximo de hoje primeiro) -> Ex: 01/mar vem antes de 05/mar
+          if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
         }
-      } else if (dateA && !dateB) {
-        return -1; // Com data vem antes
-      } else if (!dateA && dateB) {
-        return 1; // Sem data vai pro fim
       }
 
-      // Critério Secundário: Prioridade
+      // Regra 3: Mesma Data (ou sem data), desempate por Prioridade (Alta > Baixa)
       const pA = getPriorityWeight(a.priority);
       const pB = getPriorityWeight(b.priority);
-      if (pA !== pB) {
-        return pB - pA; // Descendente (Alta > Baixa)
-      }
+      if (pA !== pB) return pB - pA;
 
-      return 0; // Empate
+      return 0; // Empate total
     });
 
     return {
@@ -915,7 +957,6 @@ const TasksPage = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-2rem)] overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] shadow-2xl animate-in fade-in duration-500 m-4">
-      {/* CSS Mágico para as Scrollbars Premium */}
       <style>{`
         .premium-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .premium-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
@@ -1087,7 +1128,6 @@ const TasksPage = () => {
           </div>
 
           <div className="flex items-center gap-4 w-full md:w-auto">
-            {/* Barra de Filtros Premium */}
             <div className="flex items-center bg-black/50 border border-white/10 rounded-xl p-1 shadow-inner">
               {[
                 { id: "all", label: "Todas" },
@@ -1168,6 +1208,7 @@ const TasksPage = () => {
                                     comments={comments.filter((c) => c.task_id === task.id)}
                                     onStatusChange={handleStatusChange}
                                     onAddComment={handleAddComment}
+                                    onDeleteComment={handleDeleteComment}
                                     onEdit={(t) => setEditingTask(t)}
                                     onDelete={(t) => setDeletingTask(t)}
                                   />
@@ -1191,6 +1232,7 @@ const TasksPage = () => {
                       comments={comments.filter((c) => c.task_id === activeTask.id)}
                       onStatusChange={() => {}}
                       onAddComment={() => {}}
+                      onDeleteComment={() => {}}
                     />
                   </div>
                 ) : null}
