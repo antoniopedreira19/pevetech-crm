@@ -149,7 +149,6 @@ const LeadDetailDialog = ({
         } as any)
         .eq("id", lead.id);
 
-      // Update custom fields that might not be fully typed yet
       await (supabase as any)
         .from("leads")
         .update({ deal_value: form.deal_value, setor: form.setor || null })
@@ -205,248 +204,293 @@ const LeadDetailDialog = ({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="sm:max-w-lg bg-background border-border/50 max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between pr-6">
-              <span>{lead.company || lead.name}</span>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditing(!editing)}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-red-400 hover:text-red-300"
-                  onClick={() => setConfirmDelete(true)}
+        <DialogContent className="sm:max-w-lg bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 shadow-2xl text-white max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <div className="p-6 pb-4 border-b border-white/5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between pr-2">
+                <span className="text-lg font-bold tracking-tight">{lead.company || lead.name}</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-white/10 transition-colors rounded-full"
+                    onClick={() => setEditing(!editing)}
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground hover:text-white" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 hover:bg-red-500/20 transition-colors rounded-full"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
+                  </Button>
+                </div>
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground/80">
+                Detalhes do lead e histórico de interações.
+              </DialogDescription>
+            </DialogHeader>
+
+            <Tabs defaultValue="info" className="w-full mt-6">
+              <TabsList className="w-full bg-black/40 border border-white/5 p-1 rounded-xl">
+                <TabsTrigger
+                  value="info"
+                  className="flex-1 rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none text-muted-foreground"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogTitle>
-            <DialogDescription>Detalhes do lead e histórico de interações.</DialogDescription>
-          </DialogHeader>
+                  Informações
+                </TabsTrigger>
+                <TabsTrigger
+                  value="comments"
+                  className="flex-1 rounded-lg data-[state=active]:bg-white/10 data-[state=active]:text-white data-[state=active]:shadow-none text-muted-foreground"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 mr-2" /> Anotações ({comments.length})
+                </TabsTrigger>
+              </TabsList>
 
-          <Tabs defaultValue="info" className="flex-1 overflow-hidden flex flex-col mt-2">
-            <TabsList className="w-full">
-              <TabsTrigger value="info" className="flex-1">
-                Informações
-              </TabsTrigger>
-              <TabsTrigger value="comments" className="flex-1">
-                <MessageSquare className="h-3.5 w-3.5 mr-1" /> Comentários ({comments.length})
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="info" className="flex-1 overflow-auto space-y-3 mt-4 pr-1">
-              {editing ? (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label>Nome *</Label>
-                    <Input
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="bg-card/50"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label>Empresa</Label>
-                      <Input
-                        value={form.company}
-                        onChange={(e) => setForm({ ...form, company: e.target.value })}
-                        className="bg-card/50"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Setor</Label>
-                      <Input
-                        value={form.setor}
-                        onChange={(e) => setForm({ ...form, setor: e.target.value })}
-                        placeholder="Tecnologia, Saúde..."
-                        className="bg-card/50"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label>E-mail</Label>
-                      <Input
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        className="bg-card/50"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Telefone</Label>
-                      <Input
-                        value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        className="bg-card/50"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Valor do Deal (R$)</Label>
-                    <Input
-                      type="number"
-                      value={form.deal_value}
-                      onChange={(e) => setForm({ ...form, deal_value: Number(e.target.value) })}
-                      className="bg-card/50"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Etapa</Label>
-                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                      <SelectTrigger className="bg-card/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {KANBAN_COLUMNS.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.title}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Observações</Label>
-                    <Textarea
-                      value={form.message}
-                      onChange={(e) => setForm({ ...form, message: e.target.value })}
-                      className="bg-card/50 min-h-[60px]"
-                    />
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
-                      Cancelar
-                    </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-neon text-neon-foreground">
-                      {saving ? "Salvando..." : "Salvar"}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4 text-sm">
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-3">
-                    <div>
-                      <span className="text-muted-foreground block text-xs mb-1">Nome</span>{" "}
-                      <span className="font-medium">{lead.name}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-xs mb-1">Empresa</span>{" "}
-                      <span className="font-medium">{lead.company || "—"}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-xs mb-1">Setor</span>{" "}
-                      {lead.setor ? (
-                        <Badge variant="outline" className="bg-white/5 border-white/10 text-xs font-normal">
-                          {lead.setor}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-xs mb-1">E-mail</span>{" "}
-                      <span className="font-medium">{lead.email || "—"}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-xs mb-1">Telefone</span>{" "}
-                      <span className="font-medium">{lead.phone || "—"}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-black/20 p-3 rounded-lg border border-white/5">
-                    <span className="text-muted-foreground block text-xs mb-1">Valor Estimado do Deal</span>
-                    <span className="font-bold text-neon text-lg">{formatCurrency(Number(lead.deal_value) || 0)}</span>
-                  </div>
-
-                  {lead.loss_reason && (
-                    <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
-                      <span className="text-red-400 block text-xs mb-1 font-semibold">Motivo da Perda</span>
-                      <span className="text-red-300/80">{lead.loss_reason}</span>
-                    </div>
-                  )}
-                  {lead.message && (
-                    <div>
-                      <span className="text-muted-foreground block text-xs mb-1">Observações</span>
-                      <p className="mt-1 text-muted-foreground/80 whitespace-pre-wrap bg-card/30 p-3 rounded-lg border border-white/5">
-                        {lead.message}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="comments" className="flex-1 overflow-hidden flex flex-col mt-4">
-              <ScrollArea className="flex-1 pr-2">
-                {loadingComments ? (
-                  <Skeleton className="h-20 w-full rounded-xl" />
-                ) : comments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 opacity-50">
-                    <MessageSquare className="h-8 w-8 mb-2" />
-                    <p className="text-xs text-muted-foreground text-center">Nenhum comentário adicionado ainda.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {comments.map((c) => (
-                      <div
-                        key={c.id}
-                        className="group flex justify-between items-start bg-card/40 border border-border/30 rounded-lg p-3 hover:border-white/10 transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm text-foreground/90 leading-relaxed">{c.content}</p>
-                          <p className="text-[10px] text-muted-foreground mt-1.5">
-                            {new Date(c.created_at).toLocaleString("pt-BR")}
-                          </p>
+              <TabsContent value="info" className="outline-none">
+                <div className="mt-4 max-h-[50vh] overflow-y-auto premium-scrollbar pr-3 space-y-4">
+                  {editing ? (
+                    <div className="space-y-4 pb-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Nome do Contato *</Label>
+                        <Input
+                          value={form.name}
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                          className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Empresa</Label>
+                          <Input
+                            value={form.company}
+                            onChange={(e) => setForm({ ...form, company: e.target.value })}
+                            className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
+                          />
                         </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Setor</Label>
+                          <Input
+                            value={form.setor}
+                            onChange={(e) => setForm({ ...form, setor: e.target.value })}
+                            placeholder="Tecnologia, Saúde..."
+                            className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">E-mail</Label>
+                          <Input
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Telefone</Label>
+                          <Input
+                            value={form.phone}
+                            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                            className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Valor Estimado do Deal (R$)</Label>
+                        <Input
+                          type="number"
+                          value={form.deal_value}
+                          onChange={(e) => setForm({ ...form, deal_value: Number(e.target.value) })}
+                          className="bg-black/40 border-white/10 focus-visible:ring-neon/30 font-mono text-neon"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Etapa do Funil</Label>
+                        <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                          <SelectTrigger className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-white/10 z-[10000]">
+                            {KANBAN_COLUMNS.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Contexto / Observações</Label>
+                        <Textarea
+                          value={form.message}
+                          onChange={(e) => setForm({ ...form, message: e.target.value })}
+                          className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white min-h-[80px]"
+                        />
+                      </div>
+
+                      <div className="flex gap-3 justify-end pt-2">
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                          onClick={() => handleDeleteComment(c.id)}
+                          onClick={() => setEditing(false)}
+                          className="hover:bg-white/5 border-white/10"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          Cancelar
+                        </Button>
+                        <Button
+                          onClick={handleSave}
+                          disabled={saving}
+                          className="bg-neon text-black font-bold hover:bg-neon/90 shadow-[0_0_15px_rgba(0,255,128,0.2)]"
+                        >
+                          {saving ? "Salvando..." : "Salvar Alterações"}
                         </Button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-              <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
-                <Input
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Deixe uma anotação sobre a negociação..."
-                  className="bg-card/50"
-                  onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
-                />
-                <Button
-                  size="icon"
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  className="bg-neon text-neon-foreground shrink-0 shadow-lg shadow-neon/10"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+                    </div>
+                  ) : (
+                    <div className="space-y-5 text-sm pb-2">
+                      <div className="grid grid-cols-2 gap-y-5 gap-x-4">
+                        <div>
+                          <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1">
+                            Nome do Contato
+                          </span>{" "}
+                          <span className="font-medium text-white">{lead.name}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1">
+                            Empresa
+                          </span>{" "}
+                          <span className="font-medium text-white">{lead.company || "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1">
+                            Setor
+                          </span>{" "}
+                          {lead.setor ? (
+                            <Badge variant="outline" className="bg-white/5 border-white/10 text-xs font-normal">
+                              {lead.setor}
+                            </Badge>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1">
+                            Telefone
+                          </span>{" "}
+                          <span className="font-medium text-white">{lead.phone || "—"}</span>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1">
+                            E-mail
+                          </span>{" "}
+                          <span className="font-medium text-white">{lead.email || "—"}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 p-4 rounded-xl border border-white/5 shadow-inner">
+                        <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1">
+                          Valor Estimado do Deal
+                        </span>
+                        <span className="font-bold text-neon text-xl tracking-tight">
+                          {formatCurrency(Number(lead.deal_value) || 0)}
+                        </span>
+                      </div>
+
+                      {lead.loss_reason && (
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl">
+                          <span className="text-red-400 block text-[11px] uppercase tracking-wider mb-1 font-bold">
+                            Motivo da Perda
+                          </span>
+                          <span className="text-red-300/90 leading-relaxed">{lead.loss_reason}</span>
+                        </div>
+                      )}
+                      {lead.message && (
+                        <div>
+                          <span className="text-muted-foreground block text-[11px] uppercase tracking-wider mb-1.5">
+                            Observações Iniciais
+                          </span>
+                          <p className="text-white/80 whitespace-pre-wrap bg-white/5 p-4 rounded-xl border border-white/5 leading-relaxed text-[13px]">
+                            {lead.message}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="comments" className="outline-none flex flex-col h-[50vh]">
+                <div className="flex-1 overflow-y-auto premium-scrollbar pr-3">
+                  {loadingComments ? (
+                    <Skeleton className="h-20 w-full rounded-xl bg-white/5" />
+                  ) : comments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 opacity-40">
+                      <MessageSquare className="h-10 w-10 mb-3" />
+                      <p className="text-sm text-muted-foreground text-center">Nenhuma anotação registrada.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pb-2">
+                      {comments.map((c) => (
+                        <div
+                          key={c.id}
+                          className="group flex justify-between items-start bg-white/5 border border-white/5 rounded-xl p-3 hover:border-white/10 transition-colors"
+                        >
+                          <div>
+                            <p className="text-[13px] text-white/90 leading-relaxed">{c.content}</p>
+                            <p className="text-[10px] text-muted-foreground mt-2">
+                              {new Date(c.created_at).toLocaleString("pt-BR")}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all"
+                            onClick={() => handleDeleteComment(c.id)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 mt-4 pt-4 border-t border-white/5 shrink-0">
+                  <Input
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Adicionar nova anotação..."
+                    className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
+                    onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+                  />
+                  <Button
+                    size="icon"
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim()}
+                    className="bg-neon text-black hover:bg-neon/90 shrink-0 shadow-[0_0_10px_rgba(0,255,128,0.2)]"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         </DialogContent>
       </Dialog>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent className="border-border/50 bg-card">
+        <AlertDialogContent className="border-white/10 bg-[#0a0a0a]/95 backdrop-blur-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir Lead</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza? Esta ação não pode ser desfeita. Todos os comentários serão removidos permanentemente.
+            <AlertDialogTitle className="text-white">Excluir Lead</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Tem certeza? Esta ação não pode ser desfeita. Todas as anotações serão perdidas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-500 text-white hover:bg-red-600">
+            <AlertDialogCancel className="border-white/10 hover:bg-white/5 text-white">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-500 text-white hover:bg-red-600 font-bold">
               Excluir Permanentemente
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -469,24 +513,26 @@ const ProposalValueDialog = ({
   const [value, setValue] = useState("");
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm bg-background border-border/50">
+      <DialogContent className="sm:max-w-sm bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 text-white">
         <DialogHeader>
           <DialogTitle>Valor da Proposta</DialogTitle>
-          <DialogDescription>Informe o valor estimado do deal para esta proposta.</DialogDescription>
+          <DialogDescription className="text-muted-foreground">
+            Informe o valor estimado do deal para esta proposta.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
-          <Label>Valor (R$)</Label>
+          <Label className="text-muted-foreground">Valor (R$)</Label>
           <Input
             type="number"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0.00"
-            className="bg-card/50 text-lg font-mono"
+            className="bg-black/40 border-white/10 text-neon font-mono text-lg focus-visible:ring-neon/30"
             autoFocus
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-white/10 hover:bg-white/5">
+          <Button variant="ghost" onClick={onClose} className="hover:bg-white/5 border-white/10">
             Cancelar
           </Button>
           <Button
@@ -494,7 +540,7 @@ const ProposalValueDialog = ({
               onConfirm(Number(value) || 0);
               setValue("");
             }}
-            className="bg-neon text-neon-foreground"
+            className="bg-neon text-black font-bold hover:bg-neon/90 shadow-[0_0_15px_rgba(0,255,128,0.2)]"
           >
             Confirmar Valor
           </Button>
@@ -522,29 +568,31 @@ const WonConfirmDialog = ({
   }, [open, initialValue]);
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm bg-background border-border/50">
+      <DialogContent className="sm:max-w-sm bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 text-white">
         <DialogHeader>
-          <DialogTitle className="text-emerald-400 text-xl">🎉 Negócio Fechado!</DialogTitle>
-          <DialogDescription>Confirme o valor de MRR que será adicionado à sua base.</DialogDescription>
+          <DialogTitle className="text-emerald-400 text-xl flex items-center gap-2">🎉 Negócio Fechado!</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Confirme o valor de MRR que será adicionado ao seu forecast.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
-          <Label>Valor Final MRR (R$)</Label>
+          <Label className="text-muted-foreground">Valor Final MRR (R$)</Label>
           <Input
             type="number"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="0.00"
-            className="bg-card/50 text-lg font-mono text-emerald-400"
+            className="bg-black/40 border-white/10 text-emerald-400 font-mono text-lg focus-visible:ring-emerald-500/30"
             autoFocus
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-white/10 hover:bg-white/5">
+          <Button variant="ghost" onClick={onClose} className="hover:bg-white/5 border-white/10">
             Cancelar
           </Button>
           <Button
             onClick={() => onConfirm(Number(value) || 0)}
-            className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20"
+            className="bg-emerald-500 text-white hover:bg-emerald-600 font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)]"
           >
             Confirmar Ganho
           </Button>
@@ -567,23 +615,25 @@ const LostReasonDialog = ({
   const [reason, setReason] = useState("");
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-sm bg-background border-border/50">
+      <DialogContent className="sm:max-w-sm bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 text-white">
         <DialogHeader>
           <DialogTitle className="text-red-400">Motivo da Perda</DialogTitle>
-          <DialogDescription>Registre o motivo para melhorar suas análises futuras.</DialogDescription>
+          <DialogDescription className="text-muted-foreground">
+            Registre o motivo para melhorar suas análises futuras.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
-          <Label>Motivo</Label>
+          <Label className="text-muted-foreground">Motivo detalhado</Label>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Ex: Escolheu o concorrente, Sem orçamento no momento..."
-            className="bg-card/50 min-h-[80px]"
+            placeholder="Ex: Escolheu o concorrente, Sem orçamento..."
+            className="bg-black/40 border-white/10 focus-visible:ring-red-500/30 min-h-[80px] text-white"
             autoFocus
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} className="border-white/10 hover:bg-white/5">
+          <Button variant="ghost" onClick={onClose} className="hover:bg-white/5 border-white/10">
             Cancelar
           </Button>
           <Button
@@ -595,9 +645,9 @@ const LostReasonDialog = ({
                 toast.error("Informe o motivo.");
               }
             }}
-            className="bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/20"
+            className="bg-red-500 text-white hover:bg-red-600 font-bold shadow-[0_0_15px_rgba(239,68,68,0.3)]"
           >
-            Confirmar Perda
+            Registrar Perda
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -632,7 +682,6 @@ const KanbanCard = ({ lead, onClick }: { lead: Lead; onClick: () => void }) => (
         </div>
       </div>
 
-      {/* Badge do Setor */}
       {lead.setor && (
         <div className="flex mt-1">
           <Badge
@@ -678,11 +727,9 @@ const CRMKanban = () => {
     status: "new" as string,
   });
 
-  // Detail dialog
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Drag modals
   const [proposalDrag, setProposalDrag] = useState<{ leadId: string } | null>(null);
   const [wonDrag, setWonDrag] = useState<{ leadId: string; dealValue: number } | null>(null);
   const [lostDrag, setLostDrag] = useState<{ leadId: string } | null>(null);
@@ -710,7 +757,6 @@ const CRMKanban = () => {
     }
     setIsSubmitting(true);
     try {
-      // Usando cast para aceitar o setor caso o typescript da tabela global ainda não o tenha
       const { error } = await (supabase as any).from("leads").insert([
         {
           name: newDeal.name,
@@ -934,75 +980,78 @@ const CRMKanban = () => {
       />
       <LostReasonDialog open={!!lostDrag} onClose={() => setLostDrag(null)} onConfirm={handleLostConfirm} />
 
-      {/* New Deal Dialog */}
+      {/* New Deal Dialog Premium */}
       <Dialog open={isNewDealOpen} onOpenChange={setIsNewDealOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-white/10">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white">
-              <Plus className="text-neon" size={20} /> Novo Deal
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Cadastre uma nova oportunidade no pipeline.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
+        <DialogContent className="sm:max-w-md bg-[#0a0a0a]/95 backdrop-blur-xl border-white/10 shadow-2xl text-white p-0 overflow-hidden">
+          <div className="p-6 border-b border-white/5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-white text-xl">
+                <Plus className="text-neon" size={24} /> Novo Deal
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Cadastre uma nova oportunidade no pipeline.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto premium-scrollbar pr-5">
+            <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Nome do Contato *</Label>
               <Input
                 value={newDeal.name}
                 onChange={(e) => setNewDeal({ ...newDeal, name: e.target.value })}
                 placeholder="Ex: João Silva"
-                className="bg-black/40 border-white/10"
+                className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
                 autoFocus
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Empresa</Label>
                 <Input
                   value={newDeal.company}
                   onChange={(e) => setNewDeal({ ...newDeal, company: e.target.value })}
                   placeholder="Nome da empresa"
-                  className="bg-black/40 border-white/10"
+                  className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Setor</Label>
                 <Input
                   value={newDeal.setor}
                   onChange={(e) => setNewDeal({ ...newDeal, setor: e.target.value })}
                   placeholder="Tecnologia, Varejo..."
-                  className="bg-black/40 border-white/10"
+                  className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">E-mail</Label>
                 <Input
                   type="email"
                   value={newDeal.email}
                   onChange={(e) => setNewDeal({ ...newDeal, email: e.target.value })}
                   placeholder="email@empresa.com"
-                  className="bg-black/40 border-white/10"
+                  className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Telefone</Label>
                 <Input
                   value={newDeal.phone}
                   onChange={(e) => setNewDeal({ ...newDeal, phone: e.target.value })}
                   placeholder="(71) 99999-9999"
-                  className="bg-black/40 border-white/10"
+                  className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white"
                 />
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Etapa Inicial</Label>
               <Select value={newDeal.status} onValueChange={(val) => setNewDeal({ ...newDeal, status: val })}>
-                <SelectTrigger className="bg-black/40 border-white/10">
+                <SelectTrigger className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-white/10 z-[10000]">
@@ -1014,28 +1063,33 @@ const CRMKanban = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Textarea
                 value={newDeal.message}
                 onChange={(e) => setNewDeal({ ...newDeal, message: e.target.value })}
                 placeholder="Contexto inicial da negociação..."
-                className="bg-black/40 border-white/10 min-h-[80px]"
+                className="bg-black/40 border-white/10 focus-visible:ring-neon/30 text-white min-h-[80px]"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsNewDealOpen(false)} className="hover:bg-white/5">
+
+          <div className="p-6 border-t border-white/5 bg-black/20 flex justify-end gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => setIsNewDealOpen(false)}
+              className="hover:bg-white/5 border-white/10 text-white"
+            >
               Cancelar
             </Button>
             <Button
               onClick={handleCreateDeal}
               disabled={isSubmitting || !newDeal.name.trim()}
-              className="bg-neon text-black font-bold hover:bg-neon/90"
+              className="bg-neon text-black font-bold hover:bg-neon/90 shadow-[0_0_15px_rgba(0,255,128,0.2)]"
             >
               {isSubmitting ? "Salvando..." : "Criar Deal"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
