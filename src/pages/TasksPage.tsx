@@ -2,14 +2,41 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import {
-  Search, Plus, CheckCircle2, Circle, Calendar, Clock, Briefcase,
-  AlertCircle, LayoutList, MessageSquare, ChevronDown, ChevronRight,
-  Flame, ArrowRight, Send, Loader2, PlayCircle, GripVertical, Pencil, AlertTriangle,
-  Trash2, PanelLeftClose, PanelLeft
+  Search,
+  Plus,
+  CheckCircle2,
+  Circle,
+  Calendar,
+  Clock,
+  Briefcase,
+  AlertCircle,
+  LayoutList,
+  MessageSquare,
+  ChevronDown,
+  ChevronRight,
+  Flame,
+  ArrowRight,
+  Send,
+  Loader2,
+  PlayCircle,
+  GripVertical,
+  Pencil,
+  AlertTriangle,
+  Trash2,
+  PanelLeftClose,
+  PanelLeft,
+  ArrowUpRight,
 } from "lucide-react";
 import {
-  DndContext, closestCenter, DragEndEvent, DragOverEvent, DragStartEvent,
-  DragOverlay, useDroppable, PointerSensor, useSensor, useSensors,
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  useDroppable,
+  PointerSensor,
+  useSensor,
+  useSensors,
 } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -18,60 +45,84 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 // --- Types ---
 type Client = Tables<"clients">;
-type Task = Tables<"tasks"> & { status?: string };
+type Task = Tables<"tasks"> & { status?: string; updated_at?: string };
 type TaskComment = { id: string; task_id: string; content: string; created_at: string; user_id: string | null };
 
 type TaskStatus = "todo" | "in_progress" | "completed";
 
-const STATUS_CONFIG: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
+// --- Visual Configs ---
+const STATUS_CONFIG: Record<
+  TaskStatus,
+  { label: string; icon: React.ReactNode; color: string; bg: string; border: string }
+> = {
   todo: {
     label: "A Fazer",
     icon: <Circle className="h-4 w-4" />,
     color: "text-muted-foreground",
-    bg: "bg-muted/30",
+    bg: "bg-card/40",
+    border: "border-white/5",
   },
   in_progress: {
     label: "Em Andamento",
     icon: <PlayCircle className="h-4 w-4" />,
     color: "text-blue-400",
-    bg: "bg-blue-500/10",
+    bg: "bg-blue-500/5",
+    border: "border-blue-500/20",
   },
   completed: {
     label: "Concluídas",
     icon: <CheckCircle2 className="h-4 w-4" />,
     color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
+    bg: "bg-emerald-500/5",
+    border: "border-emerald-500/20",
   },
 };
 
 const PRIORITY_CONFIG = {
   high: { label: "Alta", color: "border-red-500/40 text-red-400 bg-red-500/10", icon: <Flame className="h-3 w-3" /> },
-  medium: { label: "Média", color: "border-amber-500/40 text-amber-400 bg-amber-500/10", icon: <AlertCircle className="h-3 w-3" /> },
-  low: { label: "Baixa", color: "border-emerald-500/40 text-emerald-400 bg-emerald-500/10", icon: <ArrowRight className="h-3 w-3" /> },
+  medium: {
+    label: "Média",
+    color: "border-amber-500/40 text-amber-400 bg-amber-500/10",
+    icon: <AlertCircle className="h-3 w-3" />,
+  },
+  low: {
+    label: "Baixa",
+    color: "border-emerald-500/40 text-emerald-400 bg-emerald-500/10",
+    icon: <ArrowRight className="h-3 w-3" />,
+  },
 };
 
 // --- Helpers ---
-const getInitials = (name: string | null) => name ? name.substring(0, 2).toUpperCase() : "CL";
+const getInitials = (name: string | null) => (name ? name.substring(0, 2).toUpperCase() : "CL");
 
 const isOverdue = (dueDate?: string | null, status?: string) => {
   if (!dueDate || status === "completed") return false;
-  // Parse as local date to avoid timezone offset issues
   const parts = dueDate.split("T")[0].split("-");
   const dueDateLocal = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const today = new Date();
@@ -81,7 +132,6 @@ const isOverdue = (dueDate?: string | null, status?: string) => {
 
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return null;
-  // Parse as local date to avoid timezone offset
   const parts = dateString.split("T")[0].split("-");
   const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   const today = new Date();
@@ -95,23 +145,29 @@ const formatDate = (dateString?: string | null) => {
 
 const formatCommentDate = (dateString: string) => {
   const date = new Date(dateString);
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 };
 
-// Convert local date string (YYYY-MM-DD) to ISO with noon time to avoid timezone shift
 const dateToTimestamp = (dateStr: string) => {
   if (!dateStr) return null;
   return `${dateStr}T12:00:00`;
 };
 
-// --- Droppable Column ---
+// --- Droppable Column Container ---
 const DroppableColumn = ({ id, children }: { id: string; children: React.ReactNode }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[60px] rounded-xl transition-all duration-200 ${
-        isOver ? "bg-neon/5 ring-1 ring-neon/20" : ""
+      className={`min-h-[150px] h-full rounded-2xl transition-all duration-300 p-2 ${
+        isOver
+          ? "bg-neon/5 ring-1 ring-neon/30 shadow-[inset_0_0_20px_rgba(0,255,128,0.05)]"
+          : "bg-black/20 border border-white/5"
       }`}
     >
       {children}
@@ -135,19 +191,16 @@ const DraggableTaskCard = ({
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
 }) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id, data: { status: task.status || "todo" } });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    data: { status: task.status || "todo" },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : 1,
   };
 
   return (
@@ -209,32 +262,32 @@ const TaskCard = ({
 
   return (
     <div
-      className={`group rounded-xl border transition-all duration-200 ${
+      className={`group mb-3 rounded-xl border transition-all duration-300 shadow-sm backdrop-blur-sm ${
         isCompleted
-          ? "border-border/30 bg-card/20 opacity-60"
-          : "border-border/50 bg-card/40 hover:border-border/80 hover:bg-card/60"
+          ? "border-emerald-500/10 bg-emerald-500/5 opacity-60 grayscale-[0.5]"
+          : "border-white/10 bg-card/60 hover:border-neon/30 hover:shadow-[0_4px_20px_-10px_rgba(0,255,128,0.15)] hover:-translate-y-0.5"
       }`}
     >
-      {/* Main Row */}
-      <div className="flex items-start gap-2 p-4">
+      <div className="flex items-start gap-3 p-4">
         {/* Drag Handle */}
         <button
           {...dragListeners}
-          className="mt-1 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors opacity-0 group-hover:opacity-100"
+          className="mt-1 shrink-0 cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-neon transition-colors opacity-0 group-hover:opacity-100"
           tabIndex={-1}
         >
           <GripVertical className="h-4 w-4" />
         </button>
+
         {/* Status Toggle Button */}
         <button
           onClick={() => onStatusChange(task.id, nextStatus[status])}
-          className={`mt-0.5 shrink-0 transition-colors ${STATUS_CONFIG[status].color} hover:opacity-80`}
+          className={`mt-0.5 shrink-0 transition-transform hover:scale-110 ${STATUS_CONFIG[status].color}`}
           title={`Mudar para: ${STATUS_CONFIG[nextStatus[status]].label}`}
         >
           {status === "completed" ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            <CheckCircle2 className="h-5 w-5" />
           ) : status === "in_progress" ? (
-            <PlayCircle className="h-5 w-5 text-blue-400" />
+            <PlayCircle className="h-5 w-5" />
           ) : (
             <Circle className="h-5 w-5" />
           )}
@@ -242,95 +295,86 @@ const TaskCard = ({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm font-medium ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}>
-              {task.title}
-            </span>
-          </div>
+          <span
+            className={`block text-sm font-semibold leading-tight ${isCompleted ? "line-through text-muted-foreground" : "text-white"}`}
+          >
+            {task.title}
+          </span>
 
           {task.description && !isCompleted && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{task.description}</p>
+            <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">{task.description}</p>
           )}
 
           {/* Metadata Badges */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             {priorityInfo && !isCompleted && (
-              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 gap-1 ${priorityInfo.color}`}>
-                {priorityInfo.icon}
-                {priorityInfo.label}
+              <Badge
+                variant="outline"
+                className={`text-[10px] px-2 py-0 h-5 gap-1 font-medium ${priorityInfo.color} border-transparent`}
+              >
+                {priorityInfo.icon} {priorityInfo.label}
               </Badge>
             )}
             {task.due_date && (
               <Badge
                 variant="outline"
-                className={`text-[10px] px-1.5 py-0 h-5 gap-1 ${
-                  isCompleted ? "border-border/30 text-muted-foreground" : "border-muted-foreground/30 text-muted-foreground"
-                }`}
+                className={`text-[10px] px-2 py-0 h-5 gap-1 font-medium ${isCompleted ? "border-transparent text-muted-foreground bg-white/5" : overdue ? "border-transparent text-red-400 bg-red-500/10" : "border-white/10 text-muted-foreground bg-white/5"}`}
               >
-                <Calendar className="h-3 w-3" />
+                {overdue && !isCompleted ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
                 {formatDate(task.due_date)}
               </Badge>
             )}
-            {overdue && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-red-500/40 text-red-400 bg-red-500/10">
-                <AlertTriangle className="h-3 w-3" />
-                Atrasada
-              </Badge>
-            )}
             {comments.length > 0 && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-1 border-border/30 text-muted-foreground">
-                <MessageSquare className="h-3 w-3" />
-                {comments.length}
+              <Badge
+                variant="outline"
+                className="text-[10px] px-2 py-0 h-5 gap-1 border-white/10 text-muted-foreground bg-white/5"
+              >
+                <MessageSquare className="h-3 w-3" /> {comments.length}
               </Badge>
             )}
           </div>
         </div>
 
-        {/* Edit Button */}
-        {onEdit && (
+        {/* Actions */}
+        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onEdit && (
+            <button
+              onClick={() => onEdit(task)}
+              className="p-1.5 text-muted-foreground hover:text-white hover:bg-white/10 rounded-md transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={() => onDelete(task)}
+              className="p-1.5 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
-            onClick={() => onEdit(task)}
-            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary/50 opacity-0 group-hover:opacity-100"
-            title="Editar tarefa"
+            onClick={() => setExpanded(!expanded)}
+            className="p-1.5 text-muted-foreground hover:text-white hover:bg-white/10 rounded-md transition-colors"
           >
-            <Pencil className="h-3.5 w-3.5" />
+            {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </button>
-        )}
-
-        {/* Delete Button */}
-        {onDelete && (
-          <button
-            onClick={() => onDelete(task)}
-            className="shrink-0 text-muted-foreground hover:text-red-400 transition-colors p-1 rounded-md hover:bg-red-500/10 opacity-0 group-hover:opacity-100"
-            title="Excluir tarefa"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-
-        {/* Expand Toggle */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary/50"
-        >
-          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
+        </div>
       </div>
 
       {/* Expanded: Comments Section */}
       {expanded && (
-        <div className="border-t border-border/30 px-4 pb-4 pt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* Status Selector */}
+        <div className="border-t border-white/5 bg-black/40 p-4 space-y-4 rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Status:</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Mover para:</span>
             {(["todo", "in_progress", "completed"] as TaskStatus[]).map((s) => (
               <button
                 key={s}
                 onClick={() => onStatusChange(task.id, s)}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+                className={`text-[10px] px-3 py-1 rounded-full border transition-all ${
                   status === s
-                    ? `${STATUS_CONFIG[s].bg} ${STATUS_CONFIG[s].color} border-current/30 font-medium`
-                    : "border-border/30 text-muted-foreground hover:border-border/60"
+                    ? `${STATUS_CONFIG[s].bg} ${STATUS_CONFIG[s].color} border-current/30 font-bold`
+                    : "border-white/10 text-muted-foreground hover:border-white/30 hover:bg-white/5"
                 }`}
               >
                 {STATUS_CONFIG[s].label}
@@ -338,39 +382,39 @@ const TaskCard = ({
             ))}
           </div>
 
-          {/* Comments */}
           {comments.length > 0 && (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
               {comments.map((c) => (
-                <div key={c.id} className="flex gap-2 p-2.5 rounded-lg bg-secondary/30 border border-border/20">
+                <div key={c.id} className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
                   <div className="h-6 w-6 rounded-full bg-neon/10 flex items-center justify-center shrink-0 mt-0.5">
                     <MessageSquare className="h-3 w-3 text-neon" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground">{c.content}</p>
-                    <span className="text-[10px] text-muted-foreground mt-1 block">{formatCommentDate(c.created_at)}</span>
+                    <p className="text-xs text-white/90 leading-relaxed">{c.content}</p>
+                    <span className="text-[10px] text-muted-foreground/60 mt-1 block">
+                      {formatCommentDate(c.created_at)}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Add Comment */}
           <div className="flex gap-2">
             <Input
-              placeholder="Adicionar comentário..."
+              placeholder="Escreva uma atualização..."
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmitComment()}
-              className="text-xs h-8 bg-secondary/30 border-border/30"
+              className="text-xs h-9 bg-black/50 border-white/10 focus-visible:ring-neon/30"
             />
             <Button
               size="sm"
               onClick={handleSubmitComment}
               disabled={!commentText.trim() || submitting}
-              className="h-8 px-3 bg-neon text-accent-foreground hover:bg-neon/90"
+              className="h-9 px-4 bg-neon text-black hover:bg-neon/90 shadow-[0_0_10px_rgba(0,255,128,0.2)]"
             >
-              {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             </Button>
           </div>
         </div>
@@ -379,18 +423,8 @@ const TaskCard = ({
   );
 };
 
-// --- New Task Dialog ---
-const NewTaskDialog = ({
-  open,
-  onOpenChange,
-  clientId,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  clientId: string;
-  onCreated: () => void;
-}) => {
+// --- Dialogs ---
+const NewTaskDialog = ({ open, onOpenChange, clientId, onCreated }: any) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("medium");
@@ -400,21 +434,24 @@ const NewTaskDialog = ({
   const handleCreate = async () => {
     if (!title.trim()) return;
     setSubmitting(true);
-    const { error } = await supabase.from("tasks").insert([{
-      title: title.trim(),
-      description: description.trim() || null,
-      client_id: clientId,
-      priority: priority as any,
-      due_date: dateToTimestamp(dueDate),
-      status: "todo",
-      is_completed: false,
-    }]);
-
-    if (error) {
-      toast.error("Erro ao criar tarefa");
-    } else {
+    const { error } = await supabase.from("tasks").insert([
+      {
+        title: title.trim(),
+        description: description.trim() || null,
+        client_id: clientId,
+        priority: priority as any,
+        due_date: dateToTimestamp(dueDate),
+        status: "todo",
+        is_completed: false,
+      },
+    ]);
+    if (error) toast.error("Erro ao criar tarefa");
+    else {
       toast.success("Tarefa criada!");
-      setTitle(""); setDescription(""); setPriority("medium"); setDueDate("");
+      setTitle("");
+      setDescription("");
+      setPriority("medium");
+      setDueDate("");
       onOpenChange(false);
       onCreated();
     }
@@ -423,43 +460,66 @@ const NewTaskDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border/50 sm:max-w-md">
+      <DialogContent className="bg-card border-white/10 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Nova Tarefa</DialogTitle>
-          <DialogDescription className="text-muted-foreground">Adicione uma nova tarefa para este cliente.</DialogDescription>
+          <DialogTitle className="text-white">Nova Tarefa</DialogTitle>
+          <DialogDescription className="text-muted-foreground">Adicione uma nova tarefa de produção.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
             <Label className="text-xs text-muted-foreground">Título *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Criar dashboard de vendas" className="mt-1 bg-secondary/30 border-border/40" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Desenhar automação n8n"
+              className="mt-1 bg-black/40 border-white/10"
+            />
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detalhes da tarefa..." className="mt-1 bg-secondary/30 border-border/40 min-h-[60px]" />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalhes técnicos..."
+              className="mt-1 bg-black/40 border-white/10 min-h-[80px]"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Prioridade</Label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger className="mt-1 bg-secondary/30 border-border/40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">🟢 Baixa</SelectItem>
-                  <SelectItem value="medium">🟡 Média</SelectItem>
-                  <SelectItem value="high">🔴 Alta</SelectItem>
+                <SelectTrigger className="mt-1 bg-black/40 border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-white/10">
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Prazo</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 bg-secondary/30 border-border/40" />
+              <Label className="text-xs text-muted-foreground">Prazo (Deadline)</Label>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="mt-1 bg-black/40 border-white/10 text-white"
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleCreate} disabled={!title.trim() || submitting} className="bg-neon text-accent-foreground hover:bg-neon/90">
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-            Criar Tarefa
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="hover:bg-white/5">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={!title.trim() || submitting}
+            className="bg-neon text-black hover:bg-neon/90 font-bold"
+          >
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />} Criar
+            Tarefa
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -467,18 +527,7 @@ const NewTaskDialog = ({
   );
 };
 
-// --- Edit Task Dialog ---
-const EditTaskDialog = ({
-  open,
-  onOpenChange,
-  task,
-  onUpdated,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  task: Task | null;
-  onUpdated: () => void;
-}) => {
+const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("medium");
@@ -497,17 +546,19 @@ const EditTaskDialog = ({
   const handleUpdate = async () => {
     if (!title.trim() || !task) return;
     setSubmitting(true);
-    const { error } = await supabase.from("tasks").update({
-      title: title.trim(),
-      description: description.trim() || null,
-      priority: priority as any,
-      due_date: dateToTimestamp(dueDate),
-    } as any).eq("id", task.id);
-
-    if (error) {
-      toast.error("Erro ao atualizar tarefa");
-    } else {
-      toast.success("Tarefa atualizada!");
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        title: title.trim(),
+        description: description.trim() || null,
+        priority: priority as any,
+        due_date: dateToTimestamp(dueDate),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", task.id);
+    if (error) toast.error("Erro ao atualizar");
+    else {
+      toast.success("Atualizada!");
       onOpenChange(false);
       onUpdated();
     }
@@ -515,45 +566,64 @@ const EditTaskDialog = ({
   };
 
   if (!task) return null;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border/50 sm:max-w-md">
+      <DialogContent className="bg-card border-white/10 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Editar Tarefa</DialogTitle>
-          <DialogDescription className="text-muted-foreground">Atualize os detalhes da tarefa.</DialogDescription>
+          <DialogTitle className="text-white">Editar Tarefa</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label className="text-xs text-muted-foreground">Título *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 bg-secondary/30 border-border/40" />
+            <Label className="text-xs text-muted-foreground">Título</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1 bg-black/40 border-white/10"
+            />
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Descrição</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 bg-secondary/30 border-border/40 min-h-[60px]" />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1 bg-black/40 border-white/10 min-h-[80px]"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs text-muted-foreground">Prioridade</Label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger className="mt-1 bg-secondary/30 border-border/40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">🟢 Baixa</SelectItem>
-                  <SelectItem value="medium">🟡 Média</SelectItem>
-                  <SelectItem value="high">🔴 Alta</SelectItem>
+                <SelectTrigger className="mt-1 bg-black/40 border-white/10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-white/10">
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Prazo</Label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 bg-secondary/30 border-border/40" />
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="mt-1 bg-black/40 border-white/10 text-white"
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleUpdate} disabled={!title.trim() || submitting} className="bg-neon text-accent-foreground hover:bg-neon/90">
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleUpdate}
+            disabled={!title.trim() || submitting}
+            className="bg-neon text-black hover:bg-neon/90 font-bold"
+          >
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Pencil className="h-4 w-4 mr-2" />}{" "}
             Salvar
           </Button>
         </DialogFooter>
@@ -576,9 +646,8 @@ const TasksPage = () => {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [clientPanelCollapsed, setClientPanelCollapsed] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
   const fetchData = useCallback(async () => {
     try {
       const [clientsRes, tasksRes, commentsRes] = await Promise.all([
@@ -599,42 +668,48 @@ const TasksPage = () => {
     }
   }, [selectedClientId]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed" } : t));
-    await supabase.from("tasks").update({ status: newStatus, is_completed: newStatus === "completed" } as any).eq("id", taskId);
+    const now = new Date().toISOString();
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed", updated_at: now } : t,
+      ),
+    );
+    await supabase
+      .from("tasks")
+      .update({ status: newStatus, is_completed: newStatus === "completed", updated_at: now } as any)
+      .eq("id", taskId);
   };
 
   const handleAddComment = async (taskId: string, content: string) => {
-    const { data, error } = await supabase.from("task_comments").insert([{ task_id: taskId, content }]).select();
-    if (!error && data) {
-      setComments((prev) => [...prev, ...(data as TaskComment[])]);
-    }
+    const { data, error } = await supabase
+      .from("task_comments")
+      .insert([{ task_id: taskId, content }])
+      .select();
+    if (!error && data) setComments((prev) => [...prev, ...(data as TaskComment[])]);
   };
 
   const handleDeleteTask = async () => {
     if (!deletingTask) return;
     const taskId = deletingTask.id;
-    // Optimistic removal
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     setDeletingTask(null);
-
-    // Delete comments first, then the task
     await supabase.from("task_comments").delete().eq("task_id", taskId);
     const { error } = await supabase.from("tasks").delete().eq("id", taskId);
     if (error) {
-      toast.error("Erro ao excluir tarefa");
-      fetchData(); // Revert
+      toast.error("Erro ao excluir");
+      fetchData();
     } else {
-      toast.success("Tarefa excluída!");
+      toast.success("Excluída com sucesso");
       setComments((prev) => prev.filter((c) => c.task_id !== taskId));
     }
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveTaskId(event.active.id as string);
-  };
+  const handleDragStart = (event: DragStartEvent) => setActiveTaskId(event.active.id as string);
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTaskId(null);
@@ -643,311 +718,345 @@ const TasksPage = () => {
 
     const taskId = active.id as string;
     const overId = over.id as string;
-
     const targetStatus = (["todo", "in_progress", "completed"] as TaskStatus[]).includes(overId as TaskStatus)
       ? (overId as TaskStatus)
       : null;
 
     if (targetStatus) {
       const task = tasks.find((t) => t.id === taskId);
-      if (task && (task.status || "todo") !== targetStatus) {
-        handleStatusChange(taskId, targetStatus);
-      }
+      if (task && (task.status || "todo") !== targetStatus) handleStatusChange(taskId, targetStatus);
     } else {
       const overTask = tasks.find((t) => t.id === overId);
       if (overTask) {
         const newStatus = (overTask.status || "todo") as TaskStatus;
         const task = tasks.find((t) => t.id === taskId);
-        if (task && (task.status || "todo") !== newStatus) {
-          handleStatusChange(taskId, newStatus);
-        }
+        if (task && (task.status || "todo") !== newStatus) handleStatusChange(taskId, newStatus);
       }
     }
   };
 
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null;
 
+  // LÓGICA DE ORDENAÇÃO: Mais tarefas pendentes sobem para o topo
   const filteredClients = useMemo(() => {
-    return clients.filter(
-      (c) => c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
+    let filtered = clients.filter(
+      (c) =>
+        c.company_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
-  }, [clients, searchTerm]);
+    filtered.sort((a, b) => {
+      const pendentesA = tasks.filter(
+        (t) => t.client_id === a.id && (t.status === "todo" || t.status === "in_progress"),
+      ).length;
+      const pendentesB = tasks.filter(
+        (t) => t.client_id === b.id && (t.status === "todo" || t.status === "in_progress"),
+      ).length;
+      return pendentesB - pendentesA;
+    });
+    return filtered;
+  }, [clients, searchTerm, tasks]);
 
   const activeClient = clients.find((c) => c.id === selectedClientId);
 
+  // LÓGICA DE AGRUPAMENTO E OCULTAÇÃO DE CONCLUÍDAS ANTIGAS (48h)
   const groupedTasks = useMemo(() => {
     if (!selectedClientId) return { todo: [], in_progress: [], completed: [] };
     const clientTasks = tasks.filter((t) => t.client_id === selectedClientId);
+
     return {
-      todo: clientTasks.filter((t) => (t.status || "todo") === "todo"),
+      todo: clientTasks.filter((t) => (t.status || "todo") === "todo" && !t.is_completed),
       in_progress: clientTasks.filter((t) => t.status === "in_progress"),
-      completed: clientTasks.filter((t) => t.status === "completed" || (t.status !== "in_progress" && t.is_completed)),
+      completed: clientTasks.filter((t) => {
+        const isDone = t.status === "completed" || t.is_completed;
+        if (!isDone) return false;
+
+        // Verifica se a tarefa foi atualizada há mais de 48 horas
+        const referenceDateStr = t.updated_at || t.created_at;
+        if (!referenceDateStr) return true; // Falback
+
+        const taskDate = new Date(referenceDateStr);
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 2); // Menos 2 dias
+
+        return taskDate >= cutoffDate; // Mantém no quadro apenas se for RECENTE (>= limite)
+      }),
     };
   }, [tasks, selectedClientId]);
 
-  const getClientCounts = useCallback((clientId: string) => {
-    const ct = tasks.filter((t) => t.client_id === clientId);
-    const inProgress = ct.filter((t) => t.status === "in_progress").length;
-    const todo = ct.filter((t) => (t.status || "todo") === "todo" && !t.is_completed).length;
-    const completed = ct.filter((t) => t.status === "completed" || (t.status !== "in_progress" && t.is_completed)).length;
-    return { inProgress, todo, completed, total: ct.length };
-  }, [tasks]);
+  const getClientCounts = useCallback(
+    (clientId: string) => {
+      const ct = tasks.filter((t) => t.client_id === clientId);
+      return {
+        inProgress: ct.filter((t) => t.status === "in_progress").length,
+        todo: ct.filter((t) => (t.status || "todo") === "todo" && !t.is_completed).length,
+        total: ct.length,
+      };
+    },
+    [tasks],
+  );
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex h-full gap-6 p-6">
-        <div className="w-[350px] space-y-4">
-          <Skeleton className="h-10 w-full" />
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-        </div>
-        <div className="flex-1 space-y-6">
-          <Skeleton className="h-12 w-64" />
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
-        </div>
+      <div className="p-8">
+        <Skeleton className="h-[500px] w-full rounded-2xl bg-card/20" />
       </div>
     );
-  }
 
   return (
-    <div className="flex flex-col md:flex-row h-full gap-0 animate-in fade-in duration-500">
-      {/* --- Left Panel: Client List --- */}
-      <div className={`flex flex-col gap-3 shrink-0 border-r border-border/30 bg-card/10 transition-all duration-300 ${
-        clientPanelCollapsed ? "w-0 md:w-14 overflow-hidden p-2" : "w-full md:w-[340px] p-4"
-      }`}>
+    <div className="flex flex-col md:flex-row h-[calc(100vh-2rem)] overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] shadow-2xl animate-in fade-in duration-500 m-4">
+      {/* --- Left Panel: Client Sidebar --- */}
+      <div
+        className={`flex flex-col shrink-0 border-r border-white/5 bg-black/40 backdrop-blur-xl transition-all duration-300 z-10 ${
+          clientPanelCollapsed ? "w-0 md:w-16 overflow-hidden items-center py-4" : "w-full md:w-[320px]"
+        }`}
+      >
         {clientPanelCollapsed ? (
           <button
             onClick={() => setClientPanelCollapsed(false)}
-            className="mx-auto mt-2 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-            title="Expandir painel de clientes"
+            className="p-2 rounded-xl text-muted-foreground hover:text-neon hover:bg-neon/10 transition-all shadow-sm"
+            title="Expandir painel"
           >
-            <PanelLeft className="h-5 w-5" />
+            <PanelLeft className="h-6 w-6" />
           </button>
         ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                  <LayoutList className="text-neon h-5 w-5" />
-                  Tarefas
+          <div className="flex flex-col h-full">
+            <div className="p-5 pb-4 border-b border-white/5">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                  <Briefcase className="text-neon h-5 w-5 drop-shadow-[0_0_8px_rgba(0,255,128,0.5)]" />
+                  Carteira
                 </h1>
-                <p className="text-muted-foreground text-xs mt-0.5">Gerencie entregas por cliente.</p>
+                <button
+                  onClick={() => setClientPanelCollapsed(true)}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setClientPanelCollapsed(true)}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-                title="Minimizar painel"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </button>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar cliente..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 h-9 bg-black/50 border-white/10 focus-visible:ring-neon/30 rounded-xl text-sm"
+                />
+              </div>
             </div>
 
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar cliente..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9 text-sm bg-secondary/30 border-border/30"
-              />
-            </div>
-
-            <ScrollArea className="flex-1 -mr-2 pr-2">
-              <div className="space-y-1.5 pb-4">
+            <ScrollArea className="flex-1 px-3">
+              <div className="space-y-1.5 py-3">
                 {filteredClients.map((client) => {
                   const counts = getClientCounts(client.id);
                   const isSelected = selectedClientId === client.id;
+                  const hasPending = counts.todo > 0 || counts.inProgress > 0;
 
                   return (
                     <div
                       key={client.id}
                       onClick={() => setSelectedClientId(client.id)}
-                      className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 ${
+                      className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 group ${
                         isSelected
-                          ? "bg-neon/5 border-neon/40 shadow-sm shadow-neon/5"
-                          : "bg-transparent border-transparent hover:bg-card/50 hover:border-border/30"
+                          ? "bg-neon/10 border-neon/30 shadow-[inset_0_0_15px_rgba(0,255,128,0.05)]"
+                          : "bg-transparent border-transparent hover:bg-white/5"
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar className={`h-9 w-9 border ${isSelected ? "border-neon/40" : "border-border/30"}`}>
+                        <Avatar
+                          className={`h-9 w-9 border-2 transition-colors ${isSelected ? "border-neon/80" : "border-white/10 group-hover:border-white/30"}`}
+                        >
                           <AvatarImage src={client.logo_url || undefined} />
-                          <AvatarFallback className="bg-secondary text-[10px] font-bold">{getInitials(client.company_name)}</AvatarFallback>
+                          <AvatarFallback className="bg-black text-[10px] font-bold text-muted-foreground">
+                            {getInitials(client.company_name)}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <h3 className={`font-semibold text-sm truncate ${isSelected ? "text-neon" : "text-foreground"}`}>
-                            {client.company_name}
-                          </h3>
-                          <p className="text-[11px] text-muted-foreground truncate">{client.name}</p>
-                        </div>
-                      </div>
+                          <div className="flex justify-between items-center mb-1">
+                            <h3
+                              className={`font-semibold text-sm truncate ${isSelected ? "text-neon" : "text-white group-hover:text-white"}`}
+                            >
+                              {client.company_name}
+                            </h3>
+                            {hasPending && (
+                              <span className="text-[10px] font-mono text-muted-foreground bg-black/50 px-1.5 rounded-sm border border-white/5">
+                                {counts.todo + counts.inProgress}
+                              </span>
+                            )}
+                          </div>
 
-                      {/* Counts */}
-                      <div className="flex items-center gap-3 mt-2.5 ml-12">
-                        {counts.todo > 0 && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Circle className="h-2.5 w-2.5" /> {counts.todo}
-                          </span>
-                        )}
-                        {counts.inProgress > 0 && (
-                          <span className="text-[10px] text-blue-400 flex items-center gap-1">
-                            <PlayCircle className="h-2.5 w-2.5" /> {counts.inProgress}
-                          </span>
-                        )}
-                        {counts.completed > 0 && (
-                          <span className="text-[10px] text-emerald-400 flex items-center gap-1">
-                            <CheckCircle2 className="h-2.5 w-2.5" /> {counts.completed}
-                          </span>
-                        )}
-                        {counts.total === 0 && (
-                          <span className="text-[10px] text-muted-foreground/50">Sem tarefas</span>
-                        )}
+                          <div className="flex items-center gap-2">
+                            {hasPending ? (
+                              <>
+                                {counts.inProgress > 0 && (
+                                  <span className="text-[10px] text-blue-400 font-medium flex items-center gap-1">
+                                    <PlayCircle size={10} /> {counts.inProgress} Doing
+                                  </span>
+                                )}
+                                {counts.todo > 0 && (
+                                  <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                                    <Circle size={10} /> {counts.todo} Todo
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-[10px] text-emerald-500/70 font-mono flex items-center gap-1">
+                                <CheckCircle2 size={10} /> Limpo
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
-
-                {filteredClients.length === 0 && (
-                  <div className="text-center p-6 text-muted-foreground text-sm border border-dashed border-border/30 rounded-xl">
-                    Nenhum cliente encontrado.
-                  </div>
-                )}
               </div>
             </ScrollArea>
-          </>
+          </div>
         )}
       </div>
 
-      {/* --- Right Panel: Task Board --- */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* --- Right Panel: Horizontal Kanban --- */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[linear-gradient(to_right,#80808005_1px,transparent_1px),linear-gradient(to_bottom,#80808005_1px,transparent_1px)] bg-[size:24px_24px] relative">
         {!activeClient ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-            <div className="h-16 w-16 bg-card rounded-full flex items-center justify-center mb-4 border border-border/30">
-              <Briefcase className="h-8 w-8 text-muted-foreground/40" />
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-60">
+            <div className="h-20 w-20 bg-card/30 rounded-full flex items-center justify-center mb-6 border border-white/5 backdrop-blur-md">
+              <ArrowUpRight className="h-10 w-10 text-muted-foreground" />
             </div>
-            <h2 className="text-lg font-semibold mb-1 text-foreground">Nenhum cliente selecionado</h2>
-            <p className="text-muted-foreground text-sm max-w-sm">
-              Selecione um cliente para gerenciar tarefas.
+            <h2 className="text-2xl font-bold mb-2 text-white">Nenhum cliente selecionado</h2>
+            <p className="text-muted-foreground">
+              Selecione um projeto na carteira para visualizar a esteira de produção.
             </p>
           </div>
         ) : (
           <>
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-border/30 bg-card/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border-2 border-neon/20">
-                  <AvatarImage src={activeClient.logo_url || undefined} />
-                  <AvatarFallback className="bg-neon/10 text-neon font-bold text-sm">
-                    {getInitials(activeClient.company_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h2 className="text-lg font-bold text-foreground">{activeClient.company_name}</h2>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Circle className="h-3 w-3" /> {groupedTasks.todo.length} a fazer</span>
-                    <span className="flex items-center gap-1 text-blue-400"><PlayCircle className="h-3 w-3" /> {groupedTasks.in_progress.length} em andamento</span>
-                    <span className="flex items-center gap-1 text-emerald-400"><CheckCircle2 className="h-3 w-3" /> {groupedTasks.completed.length} concluídas</span>
-                  </div>
-                </div>
+            {/* Header KANBAN */}
+            <div className="px-8 py-5 border-b border-white/5 bg-black/30 backdrop-blur-xl flex justify-between items-center z-10 sticky top-0">
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">{activeClient.company_name}</h2>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 font-mono uppercase tracking-widest">
+                  <Clock size={12} /> Production Board
+                </p>
               </div>
-              <Button onClick={() => setNewTaskOpen(true)} className="bg-neon text-accent-foreground hover:bg-neon/90 active:scale-95 transition-all h-9 text-sm">
-                <Plus className="h-4 w-4 mr-1.5" /> Nova Tarefa
+              <Button
+                onClick={() => setNewTaskOpen(true)}
+                className="bg-neon text-black font-bold hover:bg-neon/90 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,255,128,0.2)] rounded-xl h-10 px-5"
+              >
+                <Plus className="h-4 w-4 mr-2" /> Nova Entrega
               </Button>
             </div>
 
-            {/* Task Groups with Drag & Drop */}
-            <ScrollArea className="flex-1 px-6 py-4">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-              >
-                <div className="max-w-3xl mx-auto space-y-6 pb-10">
+            {/* KANBAN HORIZONTAL SCROLL AREA */}
+            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
+              <div className="h-full min-w-max p-8 flex items-start gap-6 pb-4">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                >
                   {(["todo", "in_progress", "completed"] as TaskStatus[]).map((statusKey) => {
                     const statusTasks = groupedTasks[statusKey];
                     const config = STATUS_CONFIG[statusKey];
 
                     return (
-                      <div key={statusKey}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className={config.color}>{config.icon}</span>
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            {config.label}
-                          </h3>
-                          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-secondary/40">
+                      <div key={statusKey} className="flex flex-col w-[350px] shrink-0 max-h-full">
+                        {/* Column Header */}
+                        <div
+                          className={`flex items-center justify-between mb-4 p-3 rounded-xl border ${config.border} ${config.bg} backdrop-blur-md`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`${config.color}`}>{config.icon}</span>
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-white">{config.label}</h3>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`border-current/30 ${config.color} bg-black/40 font-mono`}
+                          >
                             {statusTasks.length}
                           </Badge>
                         </div>
 
-                        <DroppableColumn id={statusKey}>
-                          <SortableContext items={statusTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                            {statusTasks.length === 0 ? (
-                              <div className="p-4 text-center border border-dashed border-border/20 rounded-xl">
-                                <p className="text-muted-foreground/50 text-xs">Nenhuma tarefa.</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                {statusTasks.map((task) => (
-                                  <DraggableTaskCard
-                                    key={task.id}
-                                    task={task}
-                                    comments={comments.filter((c) => c.task_id === task.id)}
-                                    onStatusChange={handleStatusChange}
-                                    onAddComment={handleAddComment}
-                                    onEdit={(t) => setEditingTask(t)}
-                                    onDelete={(t) => setDeletingTask(t)}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </SortableContext>
-                        </DroppableColumn>
+                        {/* Column Body (Scrollable internally) */}
+                        <ScrollArea className="flex-1 pr-3 -mr-3">
+                          <DroppableColumn id={statusKey}>
+                            <SortableContext
+                              items={statusTasks.map((t) => t.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {statusTasks.length === 0 ? (
+                                <div className="h-24 flex flex-col items-center justify-center text-center border-2 border-dashed border-white/5 rounded-xl opacity-40">
+                                  <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">
+                                    Vazio
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="space-y-1">
+                                  {statusTasks.map((task) => (
+                                    <DraggableTaskCard
+                                      key={task.id}
+                                      task={task}
+                                      comments={comments.filter((c) => c.task_id === task.id)}
+                                      onStatusChange={handleStatusChange}
+                                      onAddComment={handleAddComment}
+                                      onEdit={(t) => setEditingTask(t)}
+                                      onDelete={(t) => setDeletingTask(t)}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </SortableContext>
+                          </DroppableColumn>
+                          <ScrollBar orientation="vertical" />
+                        </ScrollArea>
                       </div>
                     );
                   })}
-                </div>
 
-                <DragOverlay>
-                  {activeTask ? (
-                    <div className="opacity-90 rotate-1 scale-105">
-                      <TaskCard
-                        task={activeTask}
-                        comments={comments.filter((c) => c.task_id === activeTask.id)}
-                        onStatusChange={() => {}}
-                        onAddComment={() => {}}
-                      />
-                    </div>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-            </ScrollArea>
+                  <DragOverlay>
+                    {activeTask ? (
+                      <div className="opacity-90 rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-neon/10">
+                        <TaskCard
+                          task={activeTask}
+                          comments={comments.filter((c) => c.task_id === activeTask.id)}
+                          onStatusChange={() => {}}
+                          onAddComment={() => {}}
+                        />
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              </div>
+            </div>
 
-            {/* New Task Dialog */}
+            {/* Modals */}
             <NewTaskDialog
               open={newTaskOpen}
               onOpenChange={setNewTaskOpen}
               clientId={activeClient.id}
               onCreated={fetchData}
             />
-            {/* Edit Task Dialog */}
             <EditTaskDialog
               open={!!editingTask}
-              onOpenChange={(v) => !v && setEditingTask(null)}
+              onOpenChange={(v: boolean) => !v && setEditingTask(null)}
               task={editingTask}
               onUpdated={fetchData}
             />
-            {/* Delete Confirmation */}
             <AlertDialog open={!!deletingTask} onOpenChange={(v) => !v && setDeletingTask(null)}>
-              <AlertDialogContent className="bg-card border-border/50">
+              <AlertDialogContent className="bg-card border-white/10">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir tarefa</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Tem certeza que deseja excluir "<strong>{deletingTask?.title}</strong>"? Esta ação não pode ser desfeita.
+                  <AlertDialogTitle className="text-white">Excluir entrega</AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground">
+                    Tem certeza que deseja excluir "<strong>{deletingTask?.title}</strong>"? Esta ação não pode ser
+                    desfeita.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Excluir
+                  <AlertDialogCancel className="hover:bg-white/5 border-white/10">Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteTask}
+                    className="bg-red-500 text-white hover:bg-red-600 font-bold"
+                  >
+                    Excluir Definitivamente
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
