@@ -73,7 +73,7 @@ import { toast } from "sonner";
 
 // --- Types ---
 type Client = Tables<"clients">;
-type Task = Tables<"tasks"> & { status?: string; updated_at?: string };
+type Task = Tables<"tasks"> & { status?: string }; // updated_at removido
 type TaskComment = { id: string; task_id: string; content: string; created_at: string; user_id: string | null };
 
 type TaskStatus = "todo" | "in_progress" | "completed";
@@ -402,7 +402,7 @@ const TaskCard = ({
         </div>
       </div>
 
-      {/* Expanded: Comments Section (Removed "Mover para") */}
+      {/* Expanded: Comments Section */}
       {expanded && (
         <div className="border-t border-white/5 bg-black/40 p-4 space-y-4 rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-200">
           {comments.length > 0 && (
@@ -465,6 +465,7 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any
   const handleCreate = async () => {
     if (!title.trim() || !selectedClientId) return;
     setSubmitting(true);
+    // REMOVIDO: updated_at do insert para garantir que não dê erro caso o bd exija compatibilidade
     const { error } = await supabase.from("tasks").insert([
       {
         title: title.trim(),
@@ -595,6 +596,7 @@ const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
   const handleUpdate = async () => {
     if (!title.trim() || !task) return;
     setSubmitting(true);
+    // REMOVIDO: updated_at foi removido do update para evitar erro no supabase
     const { error } = await supabase
       .from("tasks")
       .update({
@@ -602,7 +604,6 @@ const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
         description: description.trim() || null,
         priority: priority as any,
         due_date: dateToTimestamp(dueDate),
-        updated_at: new Date().toISOString(),
       } as any)
       .eq("id", task.id);
     if (error) toast.error("Erro ao atualizar");
@@ -719,15 +720,13 @@ const TasksPage = () => {
   }, [fetchData]);
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    const now = new Date().toISOString();
+    // REMOVIDO updated_at daqui também.
     setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed", updated_at: now } : t,
-      ),
+      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed" } : t)),
     );
     await supabase
       .from("tasks")
-      .update({ status: newStatus, is_completed: newStatus === "completed", updated_at: now } as any)
+      .update({ status: newStatus, is_completed: newStatus === "completed" } as any)
       .eq("id", taskId);
   };
 
@@ -813,7 +812,8 @@ const TasksPage = () => {
         const isDone = t.status === "completed" || t.is_completed;
         if (!isDone) return false;
 
-        const referenceDateStr = t.updated_at || t.created_at;
+        // Usamos APENAS o created_at agora que não temos o updated_at no DB.
+        const referenceDateStr = t.created_at;
         if (!referenceDateStr) return true;
 
         const taskDate = new Date(referenceDateStr);
