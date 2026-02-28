@@ -26,6 +26,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Globe,
+  AlignLeft,
 } from "lucide-react";
 import {
   DndContext,
@@ -45,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -67,6 +68,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 // --- Types ---
@@ -300,7 +302,7 @@ const TaskCard = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-col gap-1.5">
-            {/* Client Badge (Visible only if client data is passed, especially useful in Global View) */}
+            {/* Client Badge */}
             {client && (
               <div className="flex items-center gap-1.5 w-fit bg-black/40 pr-2 pl-1 py-0.5 rounded-full border border-white/5">
                 <Avatar className="h-4 w-4 border border-white/10">
@@ -320,8 +322,27 @@ const TaskCard = ({
             </span>
           </div>
 
+          {/* Premium Tooltip for Description */}
           {task.description && !isCompleted && (
-            <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">{task.description}</p>
+            <TooltipProvider delayDuration={100}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] px-1.5 py-0 h-4 mt-2 cursor-help border-white/10 text-muted-foreground bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all flex w-fit items-center gap-1 uppercase tracking-wider"
+                  >
+                    <AlignLeft size={10} /> Ler Descrição
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  className="max-w-sm bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 text-white shadow-[0_10px_40px_-10px_rgba(0,255,128,0.15)] p-4 rounded-xl z-50"
+                >
+                  <p className="text-xs leading-relaxed text-white/80 whitespace-pre-wrap">{task.description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
 
           {/* Metadata Badges */}
@@ -381,28 +402,11 @@ const TaskCard = ({
         </div>
       </div>
 
-      {/* Expanded: Comments Section */}
+      {/* Expanded: Comments Section (Removed "Mover para" buttons) */}
       {expanded && (
         <div className="border-t border-white/5 bg-black/40 p-4 space-y-4 rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Mover para:</span>
-            {(["todo", "in_progress", "completed"] as TaskStatus[]).map((s) => (
-              <button
-                key={s}
-                onClick={() => onStatusChange(task.id, s)}
-                className={`text-[10px] px-3 py-1 rounded-full border transition-all ${
-                  status === s
-                    ? `${STATUS_CONFIG[s].bg} ${STATUS_CONFIG[s].color} border-current/30 font-bold`
-                    : "border-white/10 text-muted-foreground hover:border-white/30 hover:bg-white/5"
-                }`}
-              >
-                {STATUS_CONFIG[s].label}
-              </button>
-            ))}
-          </div>
-
           {comments.length > 0 && (
-            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 premium-scrollbar">
               {comments.map((c) => (
                 <div key={c.id} className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/5">
                   <div className="h-6 w-6 rounded-full bg-neon/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -450,7 +454,6 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Controle de cliente se for visão geral
   const [selectedClientId, setSelectedClientId] = useState("");
 
   useEffect(() => {
@@ -494,7 +497,6 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any
           <DialogDescription className="text-muted-foreground">Adicione uma nova tarefa de produção.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Seletor de cliente visível quando em modo "Visão Geral" */}
           {clientId === "all" && (
             <div>
               <Label className="text-xs text-muted-foreground">Cliente *</Label>
@@ -851,6 +853,14 @@ const TasksPage = () => {
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-2rem)] overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0a] shadow-2xl animate-in fade-in duration-500 m-4">
+      {/* CSS Mágico para as Scrollbars Premium */}
+      <style>{`
+        .premium-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .premium-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
+        .premium-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        .premium-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 128, 0.4); }
+      `}</style>
+
       {/* --- Left Panel: Client Sidebar --- */}
       <div
         className={`flex flex-col shrink-0 border-r border-white/5 bg-black/40 backdrop-blur-xl transition-all duration-300 z-10 ${
@@ -891,7 +901,7 @@ const TasksPage = () => {
               </div>
             </div>
 
-            <ScrollArea className="flex-1 px-3">
+            <div className="flex-1 overflow-y-auto premium-scrollbar px-3">
               <div className="space-y-1.5 py-3">
                 {/* Botão de Visão Geral Fixo no Topo */}
                 <div
@@ -996,7 +1006,7 @@ const TasksPage = () => {
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
       </div>
@@ -1023,7 +1033,7 @@ const TasksPage = () => {
         </div>
 
         {/* KANBAN HORIZONTAL SCROLL AREA */}
-        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
+        <div className="flex-1 overflow-x-auto overflow-y-hidden premium-scrollbar">
           <div className="h-full min-w-max p-8 flex items-start gap-6 pb-4">
             <DndContext
               sensors={sensors}
@@ -1036,7 +1046,7 @@ const TasksPage = () => {
                 const config = STATUS_CONFIG[statusKey];
 
                 return (
-                  <div key={statusKey} className="flex flex-col w-[350px] shrink-0 max-h-full">
+                  <div key={statusKey} className="flex flex-col w-[350px] h-full shrink-0">
                     {/* Column Header */}
                     <div
                       className={`flex items-center justify-between mb-4 p-3 rounded-xl border ${config.border} ${config.bg} backdrop-blur-md`}
@@ -1051,7 +1061,7 @@ const TasksPage = () => {
                     </div>
 
                     {/* Column Body (Scrollable internally) */}
-                    <ScrollArea className="flex-1 pr-3 -mr-3">
+                    <div className="flex-1 min-h-0 overflow-y-auto premium-scrollbar pr-3 -mr-3 pb-20">
                       <DroppableColumn id={statusKey}>
                         <SortableContext items={statusTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                           {statusTasks.length === 0 ? (
@@ -1081,8 +1091,7 @@ const TasksPage = () => {
                           )}
                         </SortableContext>
                       </DroppableColumn>
-                      <ScrollBar orientation="vertical" />
-                    </ScrollArea>
+                    </div>
                   </div>
                 );
               })}
