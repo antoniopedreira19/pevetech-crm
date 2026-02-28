@@ -73,7 +73,8 @@ import { toast } from "sonner";
 
 // --- Types ---
 type Client = Tables<"clients">;
-type Task = Tables<"tasks"> & { status?: string };
+// Adicionamos o completed_at localmente para gerenciar o estado
+type Task = Tables<"tasks"> & { status?: string; completed_at?: string | null };
 type TaskComment = { id: string; task_id: string; content: string; created_at: string; user_id: string | null };
 
 type TaskStatus = "todo" | "in_progress" | "completed";
@@ -321,6 +322,7 @@ const TaskCard = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-col gap-1.5">
+            {/* Client Badge */}
             {client && (
               <div className="flex items-center gap-1.5 w-fit bg-black/40 pr-2 pl-1 py-0.5 rounded-full border border-white/5">
                 <Avatar className="h-4 w-4 border border-white/10">
@@ -743,12 +745,23 @@ const TasksPage = () => {
   }, [fetchData]);
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    const isCompleted = newStatus === "completed";
+    const completedAt = isCompleted ? new Date().toISOString() : null;
+
     setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed" } : t)),
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus, is_completed: isCompleted, completed_at: completedAt } : t,
+      ),
     );
+
+    // Atualiza o completed_at no Supabase (se a coluna existir lá agora)
     await supabase
       .from("tasks")
-      .update({ status: newStatus, is_completed: newStatus === "completed" } as any)
+      .update({
+        status: newStatus,
+        is_completed: isCompleted,
+        completed_at: completedAt,
+      } as any)
       .eq("id", taskId);
   };
 
@@ -834,11 +847,9 @@ const TasksPage = () => {
     return filtered;
   }, [clients, searchTerm, tasks]);
 
-  // --- LÓGICA CORE DE ORDENAÇÃO E FILTROS ---
   const groupedTasks = useMemo(() => {
     let relevantTasks = selectedClientId === "all" ? [...tasks] : tasks.filter((t) => t.client_id === selectedClientId);
 
-    // 1. Configuração de Datas Base
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const timeToday = today.getTime();
@@ -846,7 +857,7 @@ const TasksPage = () => {
     const endOfToday = new Date(today);
     endOfToday.setHours(23, 59, 59, 999);
 
-    const dayOfWeek = today.getDay(); // 0 (Dom) a 6 (Sáb)
+    const dayOfWeek = today.getDay();
     const daysToSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
 
     const endOfThisWeek = new Date(today);
@@ -857,57 +868,49 @@ const TasksPage = () => {
     endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
     endOfNextWeek.setHours(23, 59, 59, 999);
 
-    // 2. Aplicação do Filtro de Data
     if (dateFilter !== "all") {
       relevantTasks = relevantTasks.filter((t) => {
         const tDate = parseLocalDate(t.due_date);
         if (!tDate) return false;
 
         const tTime = tDate.getTime();
-        if (dateFilter === "today") return tTime <= endOfToday.getTime(); // Hoje (Inclui Atrasadas)
-        if (dateFilter === "this_week") return tTime <= endOfThisWeek.getTime(); // Essa semana (Inclui hoje e atrasadas)
-        if (dateFilter === "next_week") return tTime > endOfThisWeek.getTime() && tTime <= endOfNextWeek.getTime(); // Próxima semana
+        if (dateFilter === "today") return tTime <= endOfToday.getTime();
+        if (dateFilter === "this_week") return tTime <= endOfThisWeek.getTime();
+        if (dateFilter === "next_week") return tTime > endOfThisWeek.getTime() && tTime <= endOfNextWeek.getTime();
         return true;
       });
     }
 
-    // 3. Aplicação da Ordenação (Inteligência Absoluta)
     relevantTasks.sort((a, b) => {
       const dateA = parseLocalDate(a.due_date);
       const dateB = parseLocalDate(b.due_date);
 
-      // Categorias de urgência
       const getCategory = (d: Date | null) => {
-        if (!d) return 4; // Sem data
+        if (!d) return 4;
         const time = d.getTime();
-        if (time < timeToday) return 1; // Atrasadas
-        if (time === timeToday) return 2; // Hoje
-        return 3; // Futuro
+        if (time < timeToday) return 1;
+        if (time === timeToday) return 2;
+        return 3;
       };
 
       const catA = getCategory(dateA);
       const catB = getCategory(dateB);
 
-      // Regra 1: Categoria dita a ordem principal
       if (catA !== catB) return catA - catB;
 
-      // Regra 2: Mesma Categoria, desempate por Data
       if (dateA && dateB) {
         if (catA === 1) {
-          // Atrasadas: Descending (Mais recente atraso primeiro) -> Ex: 27/fev vem antes de 02/fev
           if (dateA.getTime() !== dateB.getTime()) return dateB.getTime() - dateA.getTime();
         } else {
-          // Hoje/Futuro: Ascending (Mais próximo de hoje primeiro) -> Ex: 01/mar vem antes de 05/mar
           if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
         }
       }
 
-      // Regra 3: Mesma Data (ou sem data), desempate por Prioridade (Alta > Baixa)
       const pA = getPriorityWeight(a.priority);
       const pB = getPriorityWeight(b.priority);
       if (pA !== pB) return pB - pA;
 
-      return 0; // Empate total
+      return 0;
     });
 
     return {
@@ -917,7 +920,8 @@ const TasksPage = () => {
         const isDone = t.status === "completed" || t.is_completed;
         if (!isDone) return false;
 
-        const referenceDateStr = t.created_at;
+        // AGORA SIM: Usa a data em que foi movido para concluído (se existir), senão usa a data de criação como fallback.
+        const referenceDateStr = t.completed_at || t.created_at;
         if (!referenceDateStr) return true;
 
         const taskDate = new Date(referenceDateStr);
