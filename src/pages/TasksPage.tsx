@@ -602,7 +602,6 @@ const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
         description: description.trim() || null,
         priority: priority as any,
         due_date: dateToTimestamp(dueDate),
-        updated_at: new Date().toISOString(),
       } as any)
       .eq("id", task.id);
     if (error) toast.error("Erro ao atualizar");
