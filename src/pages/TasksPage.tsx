@@ -27,6 +27,7 @@ import {
   PanelLeft,
   Globe,
   AlignLeft,
+  Filter,
 } from "lucide-react";
 import {
   DndContext,
@@ -73,10 +74,11 @@ import { toast } from "sonner";
 
 // --- Types ---
 type Client = Tables<"clients">;
-type Task = Tables<"tasks"> & { status?: string }; // updated_at removido
+type Task = Tables<"tasks"> & { status?: string };
 type TaskComment = { id: string; task_id: string; content: string; created_at: string; user_id: string | null };
 
 type TaskStatus = "todo" | "in_progress" | "completed";
+type DateFilter = "all" | "today" | "this_week" | "next_week";
 
 // --- Visual Configs ---
 const STATUS_CONFIG: Record<
@@ -120,22 +122,27 @@ const PRIORITY_CONFIG = {
   },
 };
 
-// --- Helpers ---
+// --- Helpers de Ordenação e Data ---
 const getInitials = (name: string | null) => (name ? name.substring(0, 2).toUpperCase() : "CL");
+
+const parseLocalDate = (dateString?: string | null) => {
+  if (!dateString) return null;
+  const parts = dateString.split("T")[0].split("-");
+  return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+};
 
 const isOverdue = (dueDate?: string | null, status?: string) => {
   if (!dueDate || status === "completed") return false;
-  const parts = dueDate.split("T")[0].split("-");
-  const dueDateLocal = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const dueDateLocal = parseLocalDate(dueDate);
+  if (!dueDateLocal) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return dueDateLocal < today;
 };
 
 const formatDate = (dateString?: string | null) => {
-  if (!dateString) return null;
-  const parts = dateString.split("T")[0].split("-");
-  const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const date = parseLocalDate(dateString);
+  if (!date) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -158,6 +165,13 @@ const formatCommentDate = (dateString: string) => {
 const dateToTimestamp = (dateStr: string) => {
   if (!dateStr) return null;
   return `${dateStr}T12:00:00`;
+};
+
+const getPriorityWeight = (priority?: string | null) => {
+  if (priority === "high") return 3;
+  if (priority === "medium") return 2;
+  if (priority === "low") return 1;
+  return 0;
 };
 
 // --- Droppable Column Container ---
@@ -303,7 +317,6 @@ const TaskCard = ({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-col gap-1.5">
-            {/* Client Badge */}
             {client && (
               <div className="flex items-center gap-1.5 w-fit bg-black/40 pr-2 pl-1 py-0.5 rounded-full border border-white/5">
                 <Avatar className="h-4 w-4 border border-white/10">
@@ -323,7 +336,7 @@ const TaskCard = ({
             </span>
           </div>
 
-          {/* Premium Tooltip for Description (Apenas o Badge visível, sem texto solto) */}
+          {/* Premium Tooltip for Description */}
           {task.description && !isCompleted && (
             <div className="mt-2" onPointerDown={(e) => e.stopPropagation()}>
               <TooltipProvider delayDuration={150}>
@@ -446,26 +459,22 @@ const TaskCard = ({
   );
 };
 
-// --- Dialogs ---
+// --- Dialogs (MANTIDOS IDENTICOS AOS ANTERIORES - OCULTADOS POR BREVIDADE MAS VOCE DEVE MANTE-LOS NO SEU ARQUIVO) ---
 const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("medium");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
-
   const [selectedClientId, setSelectedClientId] = useState("");
 
   useEffect(() => {
-    if (open) {
-      setSelectedClientId(clientId === "all" ? "" : clientId);
-    }
+    if (open) setSelectedClientId(clientId === "all" ? "" : clientId);
   }, [open, clientId]);
 
   const handleCreate = async () => {
     if (!title.trim() || !selectedClientId) return;
     setSubmitting(true);
-    // REMOVIDO: updated_at do insert para garantir que não dê erro caso o bd exija compatibilidade
     const { error } = await supabase.from("tasks").insert([
       {
         title: title.trim(),
@@ -515,7 +524,6 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any
               </Select>
             </div>
           )}
-
           <div>
             <Label className="text-xs text-muted-foreground">Título *</Label>
             <Input
@@ -596,7 +604,6 @@ const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
   const handleUpdate = async () => {
     if (!title.trim() || !task) return;
     setSubmitting(true);
-    // REMOVIDO: updated_at foi removido do update para evitar erro no supabase
     const { error } = await supabase
       .from("tasks")
       .update({
@@ -690,6 +697,7 @@ const TasksPage = () => {
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClientId, setSelectedClientId] = useState<string | "all">("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all"); // NOVO ESTADO DE FILTRO
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -720,7 +728,6 @@ const TasksPage = () => {
   }, [fetchData]);
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
-    // REMOVIDO updated_at daqui também.
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status: newStatus, is_completed: newStatus === "completed" } : t)),
     );
@@ -781,6 +788,7 @@ const TasksPage = () => {
   };
 
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null;
+  const activeClient = selectedClientId === "all" ? null : clients.find((c) => c.id === selectedClientId);
 
   const filteredClients = useMemo(() => {
     let filtered = clients.filter(
@@ -800,10 +808,65 @@ const TasksPage = () => {
     return filtered;
   }, [clients, searchTerm, tasks]);
 
-  const activeClient = selectedClientId === "all" ? null : clients.find((c) => c.id === selectedClientId);
-
+  // --- LÓGICA CORE DE ORDENAÇÃO E FILTROS ---
   const groupedTasks = useMemo(() => {
-    let relevantTasks = selectedClientId === "all" ? tasks : tasks.filter((t) => t.client_id === selectedClientId);
+    let relevantTasks = selectedClientId === "all" ? [...tasks] : tasks.filter((t) => t.client_id === selectedClientId);
+
+    // 1. Configuração de Datas Base
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const endOfToday = new Date(today);
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const dayOfWeek = today.getDay(); // 0 (Dom) a 6 (Sáb)
+    const daysToSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+
+    const endOfThisWeek = new Date(today);
+    endOfThisWeek.setDate(today.getDate() + daysToSunday);
+    endOfThisWeek.setHours(23, 59, 59, 999);
+
+    const endOfNextWeek = new Date(endOfThisWeek);
+    endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
+    endOfNextWeek.setHours(23, 59, 59, 999);
+
+    // 2. Aplicação do Filtro de Data
+    if (dateFilter !== "all") {
+      relevantTasks = relevantTasks.filter((t) => {
+        const tDate = parseLocalDate(t.due_date);
+        if (!tDate) return false; // Se tiver filtro exigimos data
+        if (dateFilter === "today") return tDate <= endOfToday; // Hoje (Inclui Atrasadas)
+        if (dateFilter === "this_week") return tDate <= endOfThisWeek; // Essa semana (Inclui hoje e atrasadas)
+        if (dateFilter === "next_week") return tDate > endOfThisWeek && tDate <= endOfNextWeek; // Exatamente próxima semana
+        return true;
+      });
+    }
+
+    // 3. Aplicação da Ordenação (Data Ascendente -> Prioridade Descendente)
+    relevantTasks.sort((a, b) => {
+      const dateA = parseLocalDate(a.due_date);
+      const dateB = parseLocalDate(b.due_date);
+
+      // Critério Primário: Data
+      if (dateA && dateB) {
+        if (dateA.getTime() !== dateB.getTime()) {
+          return dateA.getTime() - dateB.getTime();
+        }
+      } else if (dateA && !dateB) {
+        return -1; // Com data vem antes
+      } else if (!dateA && dateB) {
+        return 1; // Sem data vai pro fim
+      }
+
+      // Critério Secundário: Prioridade
+      const pA = getPriorityWeight(a.priority);
+      const pB = getPriorityWeight(b.priority);
+      if (pA !== pB) {
+        return pB - pA; // Descendente (Alta > Baixa)
+      }
+
+      return 0; // Empate
+    });
 
     return {
       todo: relevantTasks.filter((t) => (t.status || "todo") === "todo" && !t.is_completed),
@@ -812,7 +875,6 @@ const TasksPage = () => {
         const isDone = t.status === "completed" || t.is_completed;
         if (!isDone) return false;
 
-        // Usamos APENAS o created_at agora que não temos o updated_at no DB.
         const referenceDateStr = t.created_at;
         if (!referenceDateStr) return true;
 
@@ -823,7 +885,7 @@ const TasksPage = () => {
         return taskDate >= cutoffDate;
       }),
     };
-  }, [tasks, selectedClientId]);
+  }, [tasks, selectedClientId, dateFilter]);
 
   const getClientCounts = useCallback(
     (clientId: string) => {
@@ -903,7 +965,6 @@ const TasksPage = () => {
 
             <div className="flex-1 overflow-y-auto premium-scrollbar px-3">
               <div className="space-y-1.5 py-3">
-                {/* Botão de Visão Geral Fixo no Topo */}
                 <div
                   onClick={() => setSelectedClientId("all")}
                   className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 group mb-4 ${
@@ -1013,8 +1074,8 @@ const TasksPage = () => {
 
       {/* --- Right Panel: Horizontal Kanban --- */}
       <div className="flex-1 flex flex-col min-w-0 bg-[linear-gradient(to_right,#80808005_1px,transparent_1px),linear-gradient(to_bottom,#80808005_1px,transparent_1px)] bg-[size:24px_24px] relative">
-        {/* Header KANBAN */}
-        <div className="px-8 py-5 border-b border-white/5 bg-black/30 backdrop-blur-xl flex justify-between items-center z-10 sticky top-0">
+        {/* Header KANBAN COM FILTROS */}
+        <div className="px-8 py-5 border-b border-white/5 bg-black/30 backdrop-blur-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 z-10 sticky top-0">
           <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
               {selectedClientId === "all" ? "Visão Geral da Produção" : activeClient?.company_name}
@@ -1024,12 +1085,37 @@ const TasksPage = () => {
               Quadro de Operações
             </p>
           </div>
-          <Button
-            onClick={() => setNewTaskOpen(true)}
-            className="bg-neon text-black font-bold hover:bg-neon/90 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,255,128,0.2)] rounded-xl h-10 px-5"
-          >
-            <Plus className="h-4 w-4 mr-2" /> Nova Entrega
-          </Button>
+
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            {/* Barra de Filtros Premium */}
+            <div className="flex items-center bg-black/50 border border-white/10 rounded-xl p-1 shadow-inner">
+              {[
+                { id: "all", label: "Todas" },
+                { id: "today", label: "Hoje" },
+                { id: "this_week", label: "Essa Semana" },
+                { id: "next_week", label: "Próx. Semana" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setDateFilter(f.id as DateFilter)}
+                  className={`px-3 py-1.5 text-[11px] md:text-xs font-semibold rounded-lg transition-all ${
+                    dateFilter === f.id
+                      ? "bg-white/10 text-white shadow-sm border border-white/10"
+                      : "text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <Button
+              onClick={() => setNewTaskOpen(true)}
+              className="bg-neon text-black font-bold hover:bg-neon/90 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,255,128,0.2)] rounded-xl h-9 px-4 shrink-0 hidden md:flex"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Nova Entrega
+            </Button>
+          </div>
         </div>
 
         {/* KANBAN HORIZONTAL SCROLL AREA */}
@@ -1060,14 +1146,14 @@ const TasksPage = () => {
                       </Badge>
                     </div>
 
-                    {/* Column Body (Scrollable internally) */}
+                    {/* Column Body */}
                     <div className="flex-1 min-h-0 overflow-y-auto premium-scrollbar pr-3 -mr-3 pb-20">
                       <DroppableColumn id={statusKey}>
                         <SortableContext items={statusTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                           {statusTasks.length === 0 ? (
                             <div className="h-24 flex flex-col items-center justify-center text-center border-2 border-dashed border-white/5 rounded-xl opacity-40">
                               <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">
-                                Vazio
+                                {dateFilter !== "all" ? "Nenhuma p/ este filtro" : "Vazio"}
                               </p>
                             </div>
                           ) : (
