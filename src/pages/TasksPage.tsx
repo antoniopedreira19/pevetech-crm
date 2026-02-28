@@ -25,7 +25,7 @@ import {
   Trash2,
   PanelLeftClose,
   PanelLeft,
-  ArrowUpRight,
+  Globe,
 } from "lucide-react";
 import {
   DndContext,
@@ -76,7 +76,6 @@ type TaskComment = { id: string; task_id: string; content: string; created_at: s
 
 type TaskStatus = "todo" | "in_progress" | "completed";
 
-// --- Visual Configs ---
 const STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; icon: React.ReactNode; color: string; bg: string; border: string }
@@ -178,6 +177,7 @@ const DroppableColumn = ({ id, children }: { id: string; children: React.ReactNo
 // --- Draggable Task Card Wrapper ---
 const DraggableTaskCard = ({
   task,
+  client,
   comments,
   onStatusChange,
   onAddComment,
@@ -185,6 +185,7 @@ const DraggableTaskCard = ({
   onDelete,
 }: {
   task: Task;
+  client?: Client;
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
@@ -207,6 +208,7 @@ const DraggableTaskCard = ({
     <div ref={setNodeRef} style={style} {...attributes}>
       <TaskCard
         task={task}
+        client={client}
         comments={comments}
         onStatusChange={onStatusChange}
         onAddComment={onAddComment}
@@ -221,6 +223,7 @@ const DraggableTaskCard = ({
 // --- Task Card Component ---
 const TaskCard = ({
   task,
+  client,
   comments,
   onStatusChange,
   onAddComment,
@@ -229,6 +232,7 @@ const TaskCard = ({
   onDelete,
 }: {
   task: Task;
+  client?: Client;
   comments: TaskComment[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onAddComment: (taskId: string, content: string) => void;
@@ -295,11 +299,26 @@ const TaskCard = ({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <span
-            className={`block text-sm font-semibold leading-tight ${isCompleted ? "line-through text-muted-foreground" : "text-white"}`}
-          >
-            {task.title}
-          </span>
+          <div className="flex flex-col gap-1.5">
+            {/* Client Badge (Visible only if client data is passed, especially useful in Global View) */}
+            {client && (
+              <div className="flex items-center gap-1.5 w-fit bg-black/40 pr-2 pl-1 py-0.5 rounded-full border border-white/5">
+                <Avatar className="h-4 w-4 border border-white/10">
+                  <AvatarImage src={client.logo_url || undefined} />
+                  <AvatarFallback className="bg-secondary text-[8px] font-bold text-muted-foreground">
+                    {getInitials(client.company_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{client.company_name}</span>
+              </div>
+            )}
+
+            <span
+              className={`block text-sm font-semibold leading-tight ${isCompleted ? "line-through text-muted-foreground" : "text-white"}`}
+            >
+              {task.title}
+            </span>
+          </div>
 
           {task.description && !isCompleted && (
             <p className="text-xs text-muted-foreground mt-2 line-clamp-2 leading-relaxed">{task.description}</p>
@@ -424,21 +443,30 @@ const TaskCard = ({
 };
 
 // --- Dialogs ---
-const NewTaskDialog = ({ open, onOpenChange, clientId, onCreated }: any) => {
+const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("medium");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Controle de cliente se for visão geral
+  const [selectedClientId, setSelectedClientId] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setSelectedClientId(clientId === "all" ? "" : clientId);
+    }
+  }, [open, clientId]);
+
   const handleCreate = async () => {
-    if (!title.trim()) return;
+    if (!title.trim() || !selectedClientId) return;
     setSubmitting(true);
     const { error } = await supabase.from("tasks").insert([
       {
         title: title.trim(),
         description: description.trim() || null,
-        client_id: clientId,
+        client_id: selectedClientId,
         priority: priority as any,
         due_date: dateToTimestamp(dueDate),
         status: "todo",
@@ -466,6 +494,25 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, onCreated }: any) => {
           <DialogDescription className="text-muted-foreground">Adicione uma nova tarefa de produção.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Seletor de cliente visível quando em modo "Visão Geral" */}
+          {clientId === "all" && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Cliente *</Label>
+              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                <SelectTrigger className="mt-1 bg-black/40 border-white/10">
+                  <SelectValue placeholder="Selecione o cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-card border-white/10">
+                  {clients.map((c: Client) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <Label className="text-xs text-muted-foreground">Título *</Label>
             <Input
@@ -515,7 +562,7 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, onCreated }: any) => {
           </Button>
           <Button
             onClick={handleCreate}
-            disabled={!title.trim() || submitting}
+            disabled={!title.trim() || submitting || !selectedClientId}
             className="bg-neon text-black hover:bg-neon/90 font-bold"
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />} Criar
@@ -639,7 +686,7 @@ const TasksPage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | "all">("all");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -658,19 +705,16 @@ const TasksPage = () => {
       if (clientsRes.data) setClients(clientsRes.data);
       if (tasksRes.data) setTasks(tasksRes.data);
       if (commentsRes.data) setComments(commentsRes.data as TaskComment[]);
-      if (!selectedClientId && clientsRes.data?.length) {
-        setSelectedClientId(clientsRes.data[0].id);
-      }
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     } finally {
       setLoading(false);
     }
-  }, [selectedClientId]);
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     const now = new Date().toISOString();
@@ -737,7 +781,6 @@ const TasksPage = () => {
 
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null;
 
-  // LÓGICA DE ORDENAÇÃO: Mais tarefas pendentes sobem para o topo
   const filteredClients = useMemo(() => {
     let filtered = clients.filter(
       (c) =>
@@ -756,29 +799,26 @@ const TasksPage = () => {
     return filtered;
   }, [clients, searchTerm, tasks]);
 
-  const activeClient = clients.find((c) => c.id === selectedClientId);
+  const activeClient = selectedClientId === "all" ? null : clients.find((c) => c.id === selectedClientId);
 
-  // LÓGICA DE AGRUPAMENTO E OCULTAÇÃO DE CONCLUÍDAS ANTIGAS (48h)
   const groupedTasks = useMemo(() => {
-    if (!selectedClientId) return { todo: [], in_progress: [], completed: [] };
-    const clientTasks = tasks.filter((t) => t.client_id === selectedClientId);
+    let relevantTasks = selectedClientId === "all" ? tasks : tasks.filter((t) => t.client_id === selectedClientId);
 
     return {
-      todo: clientTasks.filter((t) => (t.status || "todo") === "todo" && !t.is_completed),
-      in_progress: clientTasks.filter((t) => t.status === "in_progress"),
-      completed: clientTasks.filter((t) => {
+      todo: relevantTasks.filter((t) => (t.status || "todo") === "todo" && !t.is_completed),
+      in_progress: relevantTasks.filter((t) => t.status === "in_progress"),
+      completed: relevantTasks.filter((t) => {
         const isDone = t.status === "completed" || t.is_completed;
         if (!isDone) return false;
 
-        // Verifica se a tarefa foi atualizada há mais de 48 horas
         const referenceDateStr = t.updated_at || t.created_at;
-        if (!referenceDateStr) return true; // Falback
+        if (!referenceDateStr) return true;
 
         const taskDate = new Date(referenceDateStr);
         const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - 2); // Menos 2 dias
+        cutoffDate.setDate(cutoffDate.getDate() - 2);
 
-        return taskDate >= cutoffDate; // Mantém no quadro apenas se for RECENTE (>= limite)
+        return taskDate >= cutoffDate;
       }),
     };
   }, [tasks, selectedClientId]);
@@ -794,6 +834,13 @@ const TasksPage = () => {
     },
     [tasks],
   );
+
+  const globalCounts = useMemo(() => {
+    return {
+      inProgress: tasks.filter((t) => t.status === "in_progress").length,
+      todo: tasks.filter((t) => (t.status || "todo") === "todo" && !t.is_completed).length,
+    };
+  }, [tasks]);
 
   if (loading)
     return (
@@ -846,6 +893,45 @@ const TasksPage = () => {
 
             <ScrollArea className="flex-1 px-3">
               <div className="space-y-1.5 py-3">
+                {/* Botão de Visão Geral Fixo no Topo */}
+                <div
+                  onClick={() => setSelectedClientId("all")}
+                  className={`cursor-pointer p-3 rounded-xl border transition-all duration-200 group mb-4 ${
+                    selectedClientId === "all"
+                      ? "bg-neon/10 border-neon/30 shadow-[inset_0_0_15px_rgba(0,255,128,0.05)]"
+                      : "bg-transparent border-transparent hover:bg-white/5"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`h-9 w-9 rounded-full flex items-center justify-center border-2 transition-colors ${selectedClientId === "all" ? "border-neon/80 bg-neon/20 text-neon" : "border-white/10 bg-white/5 text-muted-foreground group-hover:border-white/30"}`}
+                    >
+                      <Globe size={18} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3
+                        className={`font-semibold text-sm truncate ${selectedClientId === "all" ? "text-neon" : "text-white group-hover:text-white"}`}
+                      >
+                        Visão Geral
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-blue-400 font-medium flex items-center gap-1">
+                          <PlayCircle size={10} /> {globalCounts.inProgress} Andamento
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                          <Circle size={10} /> {globalCounts.todo} A Fazer
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-2 pb-2">
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60">
+                    Clientes Ativos
+                  </p>
+                </div>
+
                 {filteredClients.map((client) => {
                   const counts = getClientCounts(client.id);
                   const isSelected = selectedClientId === client.id;
@@ -889,18 +975,18 @@ const TasksPage = () => {
                               <>
                                 {counts.inProgress > 0 && (
                                   <span className="text-[10px] text-blue-400 font-medium flex items-center gap-1">
-                                    <PlayCircle size={10} /> {counts.inProgress} Doing
+                                    <PlayCircle size={10} /> {counts.inProgress} Andamento
                                   </span>
                                 )}
                                 {counts.todo > 0 && (
                                   <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                                    <Circle size={10} /> {counts.todo} Todo
+                                    <Circle size={10} /> {counts.todo} A Fazer
                                   </span>
                                 )}
                               </>
                             ) : (
                               <span className="text-[10px] text-emerald-500/70 font-mono flex items-center gap-1">
-                                <CheckCircle2 size={10} /> Limpo
+                                <CheckCircle2 size={10} /> Em Dia
                               </span>
                             )}
                           </div>
@@ -917,152 +1003,141 @@ const TasksPage = () => {
 
       {/* --- Right Panel: Horizontal Kanban --- */}
       <div className="flex-1 flex flex-col min-w-0 bg-[linear-gradient(to_right,#80808005_1px,transparent_1px),linear-gradient(to_bottom,#80808005_1px,transparent_1px)] bg-[size:24px_24px] relative">
-        {!activeClient ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-60">
-            <div className="h-20 w-20 bg-card/30 rounded-full flex items-center justify-center mb-6 border border-white/5 backdrop-blur-md">
-              <ArrowUpRight className="h-10 w-10 text-muted-foreground" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-white">Nenhum cliente selecionado</h2>
-            <p className="text-muted-foreground">
-              Selecione um projeto na carteira para visualizar a esteira de produção.
+        {/* Header KANBAN */}
+        <div className="px-8 py-5 border-b border-white/5 bg-black/30 backdrop-blur-xl flex justify-between items-center z-10 sticky top-0">
+          <div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              {selectedClientId === "all" ? "Visão Geral da Produção" : activeClient?.company_name}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 font-mono uppercase tracking-widest">
+              {selectedClientId === "all" ? <Globe size={12} /> : <Clock size={12} />}
+              Quadro de Operações
             </p>
           </div>
-        ) : (
-          <>
-            {/* Header KANBAN */}
-            <div className="px-8 py-5 border-b border-white/5 bg-black/30 backdrop-blur-xl flex justify-between items-center z-10 sticky top-0">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">{activeClient.company_name}</h2>
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2 font-mono uppercase tracking-widest">
-                  <Clock size={12} /> Production Board
-                </p>
-              </div>
-              <Button
-                onClick={() => setNewTaskOpen(true)}
-                className="bg-neon text-black font-bold hover:bg-neon/90 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,255,128,0.2)] rounded-xl h-10 px-5"
+          <Button
+            onClick={() => setNewTaskOpen(true)}
+            className="bg-neon text-black font-bold hover:bg-neon/90 hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,255,128,0.2)] rounded-xl h-10 px-5"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Nova Entrega
+          </Button>
+        </div>
+
+        {/* KANBAN HORIZONTAL SCROLL AREA */}
+        <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
+          <div className="h-full min-w-max p-8 flex items-start gap-6 pb-4">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              {(["todo", "in_progress", "completed"] as TaskStatus[]).map((statusKey) => {
+                const statusTasks = groupedTasks[statusKey];
+                const config = STATUS_CONFIG[statusKey];
+
+                return (
+                  <div key={statusKey} className="flex flex-col w-[350px] shrink-0 max-h-full">
+                    {/* Column Header */}
+                    <div
+                      className={`flex items-center justify-between mb-4 p-3 rounded-xl border ${config.border} ${config.bg} backdrop-blur-md`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`${config.color}`}>{config.icon}</span>
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-white">{config.label}</h3>
+                      </div>
+                      <Badge variant="outline" className={`border-current/30 ${config.color} bg-black/40 font-mono`}>
+                        {statusTasks.length}
+                      </Badge>
+                    </div>
+
+                    {/* Column Body (Scrollable internally) */}
+                    <ScrollArea className="flex-1 pr-3 -mr-3">
+                      <DroppableColumn id={statusKey}>
+                        <SortableContext items={statusTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                          {statusTasks.length === 0 ? (
+                            <div className="h-24 flex flex-col items-center justify-center text-center border-2 border-dashed border-white/5 rounded-xl opacity-40">
+                              <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">
+                                Vazio
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              {statusTasks.map((task) => {
+                                const taskClient = clients.find((c) => c.id === task.client_id);
+                                return (
+                                  <DraggableTaskCard
+                                    key={task.id}
+                                    task={task}
+                                    client={taskClient}
+                                    comments={comments.filter((c) => c.task_id === task.id)}
+                                    onStatusChange={handleStatusChange}
+                                    onAddComment={handleAddComment}
+                                    onEdit={(t) => setEditingTask(t)}
+                                    onDelete={(t) => setDeletingTask(t)}
+                                  />
+                                );
+                              })}
+                            </div>
+                          )}
+                        </SortableContext>
+                      </DroppableColumn>
+                      <ScrollBar orientation="vertical" />
+                    </ScrollArea>
+                  </div>
+                );
+              })}
+
+              <DragOverlay>
+                {activeTask ? (
+                  <div className="opacity-90 rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-neon/10">
+                    <TaskCard
+                      task={activeTask}
+                      client={clients.find((c) => c.id === activeTask.client_id)}
+                      comments={comments.filter((c) => c.task_id === activeTask.id)}
+                      onStatusChange={() => {}}
+                      onAddComment={() => {}}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
+        </div>
+
+        {/* Modals */}
+        <NewTaskDialog
+          open={newTaskOpen}
+          onOpenChange={setNewTaskOpen}
+          clientId={selectedClientId}
+          clients={clients}
+          onCreated={fetchData}
+        />
+        <EditTaskDialog
+          open={!!editingTask}
+          onOpenChange={(v: boolean) => !v && setEditingTask(null)}
+          task={editingTask}
+          onUpdated={fetchData}
+        />
+        <AlertDialog open={!!deletingTask} onOpenChange={(v: boolean) => !v && setDeletingTask(null)}>
+          <AlertDialogContent className="bg-card border-white/10">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">Excluir entrega</AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
+                Tem certeza que deseja excluir "<strong>{deletingTask?.title}</strong>"? Esta ação não pode ser
+                desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="hover:bg-white/5 border-white/10">Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteTask}
+                className="bg-red-500 text-white hover:bg-red-600 font-bold"
               >
-                <Plus className="h-4 w-4 mr-2" /> Nova Entrega
-              </Button>
-            </div>
-
-            {/* KANBAN HORIZONTAL SCROLL AREA */}
-            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
-              <div className="h-full min-w-max p-8 flex items-start gap-6 pb-4">
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                >
-                  {(["todo", "in_progress", "completed"] as TaskStatus[]).map((statusKey) => {
-                    const statusTasks = groupedTasks[statusKey];
-                    const config = STATUS_CONFIG[statusKey];
-
-                    return (
-                      <div key={statusKey} className="flex flex-col w-[350px] shrink-0 max-h-full">
-                        {/* Column Header */}
-                        <div
-                          className={`flex items-center justify-between mb-4 p-3 rounded-xl border ${config.border} ${config.bg} backdrop-blur-md`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={`${config.color}`}>{config.icon}</span>
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-white">{config.label}</h3>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={`border-current/30 ${config.color} bg-black/40 font-mono`}
-                          >
-                            {statusTasks.length}
-                          </Badge>
-                        </div>
-
-                        {/* Column Body (Scrollable internally) */}
-                        <ScrollArea className="flex-1 pr-3 -mr-3">
-                          <DroppableColumn id={statusKey}>
-                            <SortableContext
-                              items={statusTasks.map((t) => t.id)}
-                              strategy={verticalListSortingStrategy}
-                            >
-                              {statusTasks.length === 0 ? (
-                                <div className="h-24 flex flex-col items-center justify-center text-center border-2 border-dashed border-white/5 rounded-xl opacity-40">
-                                  <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-widest">
-                                    Vazio
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="space-y-1">
-                                  {statusTasks.map((task) => (
-                                    <DraggableTaskCard
-                                      key={task.id}
-                                      task={task}
-                                      comments={comments.filter((c) => c.task_id === task.id)}
-                                      onStatusChange={handleStatusChange}
-                                      onAddComment={handleAddComment}
-                                      onEdit={(t) => setEditingTask(t)}
-                                      onDelete={(t) => setDeletingTask(t)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </SortableContext>
-                          </DroppableColumn>
-                          <ScrollBar orientation="vertical" />
-                        </ScrollArea>
-                      </div>
-                    );
-                  })}
-
-                  <DragOverlay>
-                    {activeTask ? (
-                      <div className="opacity-90 rotate-2 scale-105 cursor-grabbing shadow-2xl shadow-neon/10">
-                        <TaskCard
-                          task={activeTask}
-                          comments={comments.filter((c) => c.task_id === activeTask.id)}
-                          onStatusChange={() => {}}
-                          onAddComment={() => {}}
-                        />
-                      </div>
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
-              </div>
-            </div>
-
-            {/* Modals */}
-            <NewTaskDialog
-              open={newTaskOpen}
-              onOpenChange={setNewTaskOpen}
-              clientId={activeClient.id}
-              onCreated={fetchData}
-            />
-            <EditTaskDialog
-              open={!!editingTask}
-              onOpenChange={(v: boolean) => !v && setEditingTask(null)}
-              task={editingTask}
-              onUpdated={fetchData}
-            />
-            <AlertDialog open={!!deletingTask} onOpenChange={(v) => !v && setDeletingTask(null)}>
-              <AlertDialogContent className="bg-card border-white/10">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="text-white">Excluir entrega</AlertDialogTitle>
-                  <AlertDialogDescription className="text-muted-foreground">
-                    Tem certeza que deseja excluir "<strong>{deletingTask?.title}</strong>"? Esta ação não pode ser
-                    desfeita.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="hover:bg-white/5 border-white/10">Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteTask}
-                    className="bg-red-500 text-white hover:bg-red-600 font-bold"
-                  >
-                    Excluir Definitivamente
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </>
-        )}
+                Excluir Definitivamente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
