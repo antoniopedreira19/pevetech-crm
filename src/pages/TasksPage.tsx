@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -78,6 +78,7 @@ type TaskComment = { id: string; task_id: string; content: string; created_at: s
 
 type TaskStatus = "todo" | "in_progress" | "completed";
 
+// --- Visual Configs ---
 const STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; icon: React.ReactNode; color: string; bg: string; border: string }
@@ -322,27 +323,26 @@ const TaskCard = ({
             </span>
           </div>
 
-          {/* Premium Tooltip for Description */}
+          {/* Premium Tooltip for Description (Apenas o Badge visível, sem texto solto) */}
           {task.description && !isCompleted && (
-            <TooltipProvider delayDuration={100}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="text-[9px] px-1.5 py-0 h-4 mt-2 cursor-help border-white/10 text-muted-foreground bg-white/5 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all flex w-fit items-center gap-1 uppercase tracking-wider"
+            <div className="mt-2" onPointerDown={(e) => e.stopPropagation()}>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md cursor-help border border-white/10 text-muted-foreground bg-white/5 hover:bg-white/10 hover:text-white transition-all uppercase tracking-wider">
+                      <AlignLeft size={10} /> Ler Descrição
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    align="start"
+                    className="max-w-[300px] bg-[#0f0f0f] backdrop-blur-xl border border-white/10 text-white shadow-[0_10px_40px_-10px_rgba(0,255,128,0.2)] p-4 rounded-xl z-[9999]"
                   >
-                    <AlignLeft size={10} /> Ler Descrição
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  className="max-w-sm bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 text-white shadow-[0_10px_40px_-10px_rgba(0,255,128,0.15)] p-4 rounded-xl z-50"
-                >
-                  <p className="text-xs leading-relaxed text-white/80 whitespace-pre-wrap">{task.description}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                    <p className="text-xs leading-relaxed text-white/90 whitespace-pre-wrap">{task.description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           )}
 
           {/* Metadata Badges */}
@@ -402,7 +402,7 @@ const TaskCard = ({
         </div>
       </div>
 
-      {/* Expanded: Comments Section (Removed "Mover para" buttons) */}
+      {/* Expanded: Comments Section (Removed "Mover para") */}
       {expanded && (
         <div className="border-t border-white/5 bg-black/40 p-4 space-y-4 rounded-b-xl animate-in fade-in slide-in-from-top-2 duration-200">
           {comments.length > 0 && (
@@ -504,7 +504,7 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any
                 <SelectTrigger className="mt-1 bg-black/40 border-white/10">
                   <SelectValue placeholder="Selecione o cliente" />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-white/10">
+                <SelectContent className="bg-card border-white/10 z-[10000]">
                   {clients.map((c: Client) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.company_name}
@@ -540,7 +540,7 @@ const NewTaskDialog = ({ open, onOpenChange, clientId, clients, onCreated }: any
                 <SelectTrigger className="mt-1 bg-black/40 border-white/10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-white/10">
+                <SelectContent className="bg-card border-white/10 z-[10000]">
                   <SelectItem value="low">Baixa</SelectItem>
                   <SelectItem value="medium">Média</SelectItem>
                   <SelectItem value="high">Alta</SelectItem>
@@ -602,6 +602,7 @@ const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
         description: description.trim() || null,
         priority: priority as any,
         due_date: dateToTimestamp(dueDate),
+        updated_at: new Date().toISOString(),
       } as any)
       .eq("id", task.id);
     if (error) toast.error("Erro ao atualizar");
@@ -644,7 +645,7 @@ const EditTaskDialog = ({ open, onOpenChange, task, onUpdated }: any) => {
                 <SelectTrigger className="mt-1 bg-black/40 border-white/10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-white/10">
+                <SelectContent className="bg-card border-white/10 z-[10000]">
                   <SelectItem value="low">Baixa</SelectItem>
                   <SelectItem value="medium">Média</SelectItem>
                   <SelectItem value="high">Alta</SelectItem>
