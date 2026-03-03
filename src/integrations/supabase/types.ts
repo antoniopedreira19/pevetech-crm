@@ -55,6 +55,7 @@ export type Database = {
       clients: {
         Row: {
           company_name: string
+          contract_url: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -68,6 +69,7 @@ export type Database = {
         }
         Insert: {
           company_name: string
+          contract_url?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -81,6 +83,7 @@ export type Database = {
         }
         Update: {
           company_name?: string
+          contract_url?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -181,6 +184,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          setor: string | null
           status: Database["public"]["Enums"]["lead_status"] | null
         }
         Insert: {
@@ -195,6 +199,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          setor?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
         }
         Update: {
@@ -209,6 +214,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          setor?: string | null
           status?: Database["public"]["Enums"]["lead_status"] | null
         }
         Relationships: []
@@ -248,6 +254,7 @@ export type Database = {
       tasks: {
         Row: {
           client_id: string | null
+          completed_at: string | null
           created_at: string | null
           description: string | null
           due_date: string | null
@@ -260,6 +267,7 @@ export type Database = {
         }
         Insert: {
           client_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
@@ -272,6 +280,7 @@ export type Database = {
         }
         Update: {
           client_id?: string | null
+          completed_at?: string | null
           created_at?: string | null
           description?: string | null
           due_date?: string | null
