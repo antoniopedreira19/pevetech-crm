@@ -12,7 +12,7 @@ const Footer = () => {
           />
           <div className="h-6 w-px bg-border/30 hidden md:block" />
           <p className="text-[10px] text-muted-foreground/50 font-display uppercase tracking-[0.3em] hidden md:block">
-            Intelligence Systems
+            AI-Powered Solutions
           </p>
         </div>
         <p className="text-xs text-muted-foreground/40">
