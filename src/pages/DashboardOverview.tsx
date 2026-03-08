@@ -166,7 +166,7 @@ const RevenueChart = ({ data }: { data: any[] }) => {
 const FunnelChart = ({ data }: { data: any[] }) => (
   <div className="h-[200px] w-full mt-4">
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} layout="vertical" margin={{ left: 0, right: 20 }}>
+      <BarChart data={data} layout="vertical" margin={{ left: 0, right: 40 }}>
         <XAxis type="number" hide />
         <YAxis
           dataKey="name"
@@ -176,12 +176,7 @@ const FunnelChart = ({ data }: { data: any[] }) => (
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip
-          cursor={{ fill: "transparent" }}
-          contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
-          formatter={(value: number) => <span style={{ color: "#FFFFFF" }}>{value}</span>}
-        />
-        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
+        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24} label={{ position: "right", fill: "#FFFFFF", fontSize: 13, fontWeight: 600 }}>
           {data.map((entry, index) => (
             <Cell
               key={`cell-${index}`}
