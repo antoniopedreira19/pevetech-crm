@@ -3,27 +3,27 @@ import { Workflow, Bot, BarChart3, Compass } from "lucide-react";
 
 const pillars = [
   {
-    icon: Workflow,
-    title: "Hiperautomação",
-    desc: "Eliminamos o erro humano. Conectamos seu ecossistema (ERP, CRM, Banco) para criar fluxos de trabalho à prova de falhas que operam 24/7.",
+    icon: Compass,
+    title: "Mapeamento de Gargalos",
+    desc: "Mergulhamos na sua operação para identificar onde o tempo e o dinheiro estão vazando. Desenhamos a solução exata para resolver o problema raiz e destravar sua escala.",
     gradient: "from-emerald-500/20 to-green-500/5",
+  },
+  {
+    icon: Workflow,
+    title: "Automação de Processos",
+    desc: "O fim do trabalho manual e repetitivo. Conectamos seus sistemas (ERP, CRM) para criar fluxos operacionais que rodam sozinhos, com precisão absoluta e zero atrito.",
+    gradient: "from-green-500/20 to-teal-500/5",
   },
   {
     icon: Bot,
     title: "Inteligência Artificial",
-    desc: "Não apenas chatbots. Implementamos Agentes Autônomos que raciocinam, tomam decisões e executam tarefas complexas de vendas e suporte.",
-    gradient: "from-green-500/20 to-teal-500/5",
+    desc: "Muito além do ChatGPT. Implementamos Agentes Autônomos sob medida, capazes de raciocinar, interagir e executar tarefas complexas como se fossem parte invisível do time.",
+    gradient: "from-teal-500/20 to-cyan-500/5",
   },
   {
     icon: BarChart3,
     title: "Business Intelligence",
-    desc: "Transformamos dados brutos em vantagem competitiva. Dashboards em tempo real que revelam onde está o lucro e onde está o desperdício.",
-    gradient: "from-teal-500/20 to-cyan-500/5",
-  },
-  {
-    icon: Compass,
-    title: "Arquitetura de Escala",
-    desc: "Governança de dados e infraestrutura robusta. Preparamos sua tecnologia para suportar 10x mais clientes sem quebrar a operação.",
+    desc: "Chega de planilhas confusas e decisões baseadas em intuição. Transformamos seus dados em painéis de comando em tempo real para você pilotar a empresa com clareza.",
     gradient: "from-cyan-500/20 to-emerald-500/5",
   },
 ];
