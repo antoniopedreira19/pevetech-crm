@@ -98,10 +98,25 @@ const DifferentialsSection = () => {
           <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight">
             Por que a <span className="text-neon glow-neon-text">Pevetech?</span>
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto text-lg">
+          <p className="text-muted-foreground max-w-xl mx-auto text-lg mb-8">
             Não aplicamos "hacks". Construímos ativos tecnológicos perenes.
           </p>
-        </motion.div>
+
+          {/* Client Marquee */}
+          <div className="w-full overflow-hidden relative">
+            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+            <div className="flex animate-marquee gap-8 w-max">
+              {[...clients, ...clients, ...clients, ...clients].map((client, i) => (
+                <div
+                  key={`${client.alt}-${i}`}
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-border/20 bg-card/20 flex items-center justify-center shrink-0 overflow-hidden backdrop-blur-sm grayscale hover:grayscale-0 hover:border-neon/30 hover:shadow-[0_0_15px_rgba(0,255,128,0.08)] transition-all duration-500 cursor-default"
+                >
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {differentials.map((d, i) => (
