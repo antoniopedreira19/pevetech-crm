@@ -2,7 +2,7 @@ import Navbar from "@/components/landing/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
 import ServicesSection from "@/components/landing/ServicesSection";
 import DifferentialsSection from "@/components/landing/DifferentialsSection";
-import DiagnosticSection from "@/components/landing/DiagnosticSection";
+import CTASection from "@/components/landing/CTASection";
 import Footer from "@/components/landing/Footer";
 
 const Index = () => {
@@ -12,7 +12,7 @@ const Index = () => {
       <HeroSection />
       <ServicesSection />
       <DifferentialsSection />
-      <DiagnosticSection />
+      <CTASection />
       <Footer />
     </div>
   );

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -81,14 +82,14 @@ const HeroSection = () => {
           variants={fadeUp}
           custom={3}
         >
-          <a href="#diagnostico">
+          <Link to="/diagnostico">
             <Button
               size="lg"
               className="bg-neon text-accent-foreground font-bold text-base px-10 py-6 hover:bg-neon/90 shadow-[0_0_30px_rgba(0,255,128,0.3),_0_0_60px_rgba(0,255,128,0.1)] transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(0,255,128,0.4),_0_0_80px_rgba(0,255,128,0.15)]"
             >
               Gerar Diagnóstico Gratuito <ArrowRight className="ml-2" size={18} />
             </Button>
-          </a>
+          </Link>
           <a href="#diferenciais">
             <Button
               size="lg"
