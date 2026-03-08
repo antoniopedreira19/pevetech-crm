@@ -178,7 +178,7 @@ const FunnelChart = ({ data }: { data: any[] }) => (
         />
         <Tooltip
           cursor={{ fill: "transparent" }}
-          contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
+          contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", color: "#FFFFFF" }}
         />
         <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
           {data.map((entry, index) => (
