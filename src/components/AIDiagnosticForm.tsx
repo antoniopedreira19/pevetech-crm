@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, Sparkles, ArrowRight, Terminal } from "lucide-react";
+import { Sparkles, ArrowRight, Terminal, Cpu, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
@@ -17,12 +17,13 @@ const diagnosticSchema = z.object({
 });
 
 const terminalSteps = [
-  "> Reading inputs...",
-  "> Mapping operational flow...",
-  "> Analyzing bottleneck...",
-  "> Cross-referencing automation patterns...",
-  "> Designing architecture...",
-  "> Generating diagnostic report...",
+  { text: "> Initializing AI engine...", icon: "⚡" },
+  { text: "> Reading inputs...", icon: "📡" },
+  { text: "> Mapping operational flow...", icon: "🔄" },
+  { text: "> Analyzing bottleneck...", icon: "🔍" },
+  { text: "> Cross-referencing automation patterns...", icon: "🧠" },
+  { text: "> Designing architecture...", icon: "🏗️" },
+  { text: "> Generating diagnostic report...", icon: "📊" },
 ];
 
 const SIMULATED_RESPONSE = `## Diagnóstico Operacional
@@ -76,6 +77,7 @@ const AIDiagnosticForm = () => {
   const [phase, setPhase] = useState<"form" | "loading" | "result">("form");
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const { displayed: typedResult, done: typingDone } = useTypewriter(
@@ -90,7 +92,7 @@ const AIDiagnosticForm = () => {
     setCurrentStep(0);
     setProgress(0);
 
-    const stepDuration = 800;
+    const stepDuration = 700;
     const totalSteps = terminalSteps.length;
 
     const stepInterval = setInterval(() => {
@@ -151,183 +153,236 @@ const AIDiagnosticForm = () => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
-  const inputClass =
-    "w-full bg-transparent border-b border-muted-foreground/30 focus:border-neon px-0 py-3 text-base text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors";
+  const inputFields = [
+    { key: "name", placeholder: "Nome Completo", type: "text", icon: "👤" },
+    { key: "email", placeholder: "E-mail Corporativo", type: "email", icon: "✉️" },
+    { key: "whatsapp", placeholder: "WhatsApp", type: "text", icon: "📱" },
+    { key: "company", placeholder: "Nome da Empresa", type: "text", icon: "🏢" },
+  ];
 
   return (
     <motion.div
-      className="max-w-2xl mx-auto rounded-xl border border-neon/20 bg-card/40 backdrop-blur-xl p-8 md:p-10 relative overflow-hidden"
+      className="relative rounded-2xl border border-neon/15 bg-card/30 backdrop-blur-2xl overflow-hidden shadow-[0_0_60px_rgba(0,255,128,0.04)]"
       initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
     >
-      {/* Subtle corner glow */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-neon/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Top accent bar */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-neon/40 to-transparent" />
 
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 rounded-lg bg-neon/10 border border-neon/30 flex items-center justify-center">
-          <Terminal className="text-neon" size={20} />
+      {/* Corner glows */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-neon/[0.06] rounded-full blur-[60px] pointer-events-none" />
+      <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-neon/[0.04] rounded-full blur-[60px] pointer-events-none" />
+
+      <div className="p-6 md:p-8 lg:p-10">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className="relative">
+            <div className="w-11 h-11 rounded-xl bg-neon/10 border border-neon/25 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,128,0.1)]">
+              <Terminal className="text-neon" size={20} />
+            </div>
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neon border-2 border-background animate-pulse" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
+              Pevetech AI Architect
+              <Cpu size={14} className="text-neon/50" />
+            </h3>
+            <p className="text-[11px] text-muted-foreground/60 font-display tracking-wider">Motor de diagnóstico v2.0</p>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-neon/15 bg-neon/5">
+            <Activity size={12} className="text-neon animate-pulse" />
+            <span className="text-[10px] text-neon font-display uppercase tracking-widest">Online</span>
+          </div>
         </div>
-        <div>
-          <h3 className="font-display text-lg font-semibold text-foreground">
-            Pevetech AI Architect
-          </h3>
-          <p className="text-xs text-muted-foreground">Motor de diagnóstico v2.0</p>
-        </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neon animate-pulse" />
-          <span className="text-[10px] text-neon font-mono">ONLINE</span>
-        </div>
+
+        <AnimatePresence mode="wait">
+          {/* FORM PHASE */}
+          {phase === "form" && (
+            <motion.form
+              key="form"
+              onSubmit={handleSubmit}
+              className="space-y-5"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {inputFields.map((field) => (
+                  <div key={field.key} className="relative group">
+                    <input
+                      className={`w-full bg-background/40 border rounded-lg px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-300 ${
+                        focusedField === field.key
+                          ? "border-neon/50 shadow-[0_0_15px_rgba(0,255,128,0.08)] bg-background/60"
+                          : "border-border/30 hover:border-border/60"
+                      }`}
+                      placeholder={field.placeholder}
+                      type={field.type}
+                      value={form[field.key as keyof typeof form]}
+                      onChange={handleChange(field.key)}
+                      onFocus={() => setFocusedField(field.key)}
+                      onBlur={() => setFocusedField(null)}
+                    />
+                    {focusedField === field.key && (
+                      <motion.div
+                        className="absolute inset-0 rounded-lg border border-neon/20 pointer-events-none"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        layoutId="input-highlight"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="relative group">
+                <label className="text-[11px] text-neon/60 font-display mb-2.5 block uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-1 h-1 rounded-full bg-neon/40" />
+                  Descreva seu maior gargalo operacional
+                </label>
+                <textarea
+                  className={`w-full bg-background/40 border rounded-lg px-4 py-3.5 text-base text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-300 min-h-[120px] resize-none ${
+                    focusedField === "challenge"
+                      ? "border-neon/50 shadow-[0_0_15px_rgba(0,255,128,0.08)] bg-background/60"
+                      : "border-border/30 hover:border-border/60"
+                  }`}
+                  placeholder="Ex: Meus processos financeiros são manuais no Excel e eu perco 2 dias fechando o mês..."
+                  value={form.challenge}
+                  onChange={handleChange("challenge")}
+                  onFocus={() => setFocusedField("challenge")}
+                  onBlur={() => setFocusedField(null)}
+                  rows={4}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                size="lg"
+                className="w-full bg-neon text-accent-foreground font-bold text-base py-6 hover:bg-neon/90 shadow-[0_0_30px_rgba(0,255,128,0.25)] hover:shadow-[0_0_40px_rgba(0,255,128,0.35)] transition-all hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Sparkles size={18} className="mr-2" />
+                Iniciar Diagnóstico com IA
+                <ArrowRight size={18} className="ml-2" />
+              </Button>
+
+              <p className="text-[10px] text-muted-foreground/40 text-center font-display">
+                Seus dados estão seguros e protegidos. Não compartilhamos com terceiros.
+              </p>
+            </motion.form>
+          )}
+
+          {/* LOADING PHASE */}
+          {phase === "loading" && (
+            <motion.div
+              key="loading"
+              className="space-y-5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="bg-background/60 rounded-xl border border-border/30 p-5 md:p-6 min-h-[240px] font-mono text-sm">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/20">
+                  <span className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-neon/60" />
+                  <span className="ml-auto text-[10px] text-muted-foreground/40 font-display tracking-wider">pevetech-ai-engine</span>
+                </div>
+
+                {terminalSteps.slice(0, currentStep + 1).map((step, i) => (
+                  <motion.div
+                    key={i}
+                    className={`py-1.5 flex items-center gap-2 ${
+                      i === currentStep ? "text-neon" : "text-muted-foreground/60"
+                    }`}
+                    initial={{ opacity: 0, x: -15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                  >
+                    <span className="text-xs">{step.icon}</span>
+                    <span>{step.text}</span>
+                    {i === currentStep && (
+                      <span className="inline-block w-1.5 h-4 bg-neon ml-1 animate-pulse rounded-sm" />
+                    )}
+                    {i < currentStep && (
+                      <span className="ml-auto text-neon/40 text-xs">✓</span>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Progress */}
+              <div className="space-y-2">
+                <div className="h-1 w-full rounded-full bg-muted/50 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-neon/60 via-neon to-neon/60 shadow-[0_0_10px_rgba(0,255,128,0.3)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(progress, 100)}%` }}
+                    transition={{ duration: 0.1 }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground/50 font-display tracking-wider uppercase">
+                    Processando diagnóstico
+                  </p>
+                  <p className="text-xs text-neon/70 font-display">
+                    {Math.round(Math.min(progress, 100))}%
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* RESULT PHASE */}
+          {phase === "result" && (
+            <motion.div
+              key="result"
+              ref={resultRef}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
+            >
+              <div className="bg-background/60 rounded-xl border border-neon/15 p-5 md:p-6 font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90 shadow-[inset_0_0_30px_rgba(0,255,128,0.02)]">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-neon/10">
+                  <Cpu size={14} className="text-neon" />
+                  <span className="text-[10px] text-neon font-display uppercase tracking-widest">Relatório Gerado</span>
+                </div>
+                {typedResult}
+                {!typingDone && (
+                  <span className="inline-block w-1.5 h-4 bg-neon ml-0.5 animate-pulse rounded-sm" />
+                )}
+              </div>
+
+              {typingDone && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <a
+                    href="https://wa.me/5500000000000?text=Ol%C3%A1%2C%20quero%20agendar%20a%20execu%C3%A7%C3%A3o%20do%20meu%20plano%20de%20diagn%C3%B3stico."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button
+                      size="lg"
+                      className="w-full bg-neon text-accent-foreground font-bold text-base py-6 hover:bg-neon/90 shadow-[0_0_30px_rgba(0,255,128,0.25)] hover:shadow-[0_0_40px_rgba(0,255,128,0.35)] transition-all"
+                    >
+                      Agendar Execução deste Plano
+                      <ArrowRight size={18} className="ml-2" />
+                    </Button>
+                  </a>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence mode="wait">
-        {/* FORM PHASE */}
-        {phase === "form" && (
-          <motion.form
-            key="form"
-            onSubmit={handleSubmit}
-            className="space-y-5"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <input
-                className={inputClass}
-                placeholder="Nome Completo"
-                value={form.name}
-                onChange={handleChange("name")}
-              />
-              <input
-                className={inputClass}
-                placeholder="E-mail Corporativo"
-                type="email"
-                value={form.email}
-                onChange={handleChange("email")}
-              />
-              <input
-                className={inputClass}
-                placeholder="WhatsApp"
-                value={form.whatsapp}
-                onChange={handleChange("whatsapp")}
-              />
-              <input
-                className={inputClass}
-                placeholder="Nome da Empresa"
-                value={form.company}
-                onChange={handleChange("company")}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground font-mono mb-2 block">
-                {">"} Qual o maior gargalo da sua operação hoje?
-              </label>
-              <textarea
-                className={`${inputClass} min-h-[100px] resize-none border rounded-md border-muted-foreground/20 focus:border-neon px-3 py-3`}
-                placeholder="Ex: Meus processos financeiros são manuais no Excel e eu perco 2 dias fechando o mês..."
-                value={form.challenge}
-                onChange={handleChange("challenge")}
-                rows={4}
-              />
-            </div>
-
-            <Button
-              type="submit"
-              size="lg"
-              className="w-full gradient-neon text-accent-foreground font-semibold text-base hover:opacity-90 mt-2"
-            >
-              <Sparkles size={18} className="mr-2" />
-              Gerar Diagnóstico Operacional
-            </Button>
-          </motion.form>
-        )}
-
-        {/* LOADING PHASE */}
-        {phase === "loading" && (
-          <motion.div
-            key="loading"
-            className="space-y-4 font-mono text-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="bg-background/80 rounded-lg border border-border p-5 min-h-[200px]">
-              {terminalSteps.slice(0, currentStep + 1).map((step, i) => (
-                <motion.div
-                  key={i}
-                  className={`py-1 ${i === currentStep ? "text-neon" : "text-muted-foreground"}`}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {step}
-                  {i === currentStep && (
-                    <span className="inline-block w-2 h-4 bg-neon ml-1 animate-pulse" />
-                  )}
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Progress bar */}
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-              <motion.div
-                className="h-full gradient-neon rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(progress, 100)}%` }}
-                transition={{ duration: 0.1 }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground text-center">
-              Processando diagnóstico... {Math.round(Math.min(progress, 100))}%
-            </p>
-          </motion.div>
-        )}
-
-        {/* RESULT PHASE */}
-        {phase === "result" && (
-          <motion.div
-            key="result"
-            ref={resultRef}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="space-y-6"
-          >
-            <div className="bg-background/80 rounded-lg border border-neon/20 p-6 font-mono text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-              {typedResult}
-              {!typingDone && (
-                <span className="inline-block w-2 h-4 bg-neon ml-0.5 animate-pulse" />
-              )}
-            </div>
-
-            {typingDone && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <a
-                  href="https://wa.me/5500000000000?text=Ol%C3%A1%2C%20quero%20agendar%20a%20execu%C3%A7%C3%A3o%20do%20meu%20plano%20de%20diagn%C3%B3stico."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button
-                    size="lg"
-                    className="w-full gradient-neon text-accent-foreground font-semibold text-base hover:opacity-90"
-                  >
-                    Agendar Execução deste Plano
-                    <ArrowRight size={18} className="ml-2" />
-                  </Button>
-                </a>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Bottom accent bar */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-neon/20 to-transparent" />
     </motion.div>
   );
 };
