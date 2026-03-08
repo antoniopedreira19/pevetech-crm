@@ -1,6 +1,19 @@
 import { motion, useInView } from "framer-motion";
 import { TrendingUp, LineChart, BarChart3 } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
+import grifoLogo from "@/assets/clients/grifo.jpg";
+import californiaLogo from "@/assets/clients/california.jpg";
+import vvBeneficiosLogo from "@/assets/clients/vv-beneficios.png";
+import mtwelveLogo from "@/assets/clients/mtwelve.png";
+import senseSportsLogo from "@/assets/clients/sense-sports.jpg";
+
+const clients = [
+  { src: grifoLogo, alt: "Grifo Engenharia" },
+  { src: californiaLogo, alt: "California" },
+  { src: vvBeneficiosLogo, alt: "VV Benefícios" },
+  { src: mtwelveLogo, alt: "MTwelve" },
+  { src: senseSportsLogo, alt: "Sense Sports" },
+];
 
 const differentials = [
   {
