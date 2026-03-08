@@ -8,7 +8,7 @@ const Footer = () => {
           <img
             src={pevetechLogo}
             alt="Pevetech"
-            className="h-10 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500"
+            className="h-10 opacity-80 hover:opacity-100 transition-all duration-500"
           />
           <div className="h-6 w-px bg-border/30 hidden md:block" />
           <p className="text-[10px] text-muted-foreground/50 font-display uppercase tracking-[0.3em] hidden md:block">
