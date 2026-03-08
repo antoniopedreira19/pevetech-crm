@@ -4,13 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ParticleField from "./ParticleField";
 
-const clients = [
-  { src: grifoLogo, alt: "Grifo Engenharia" },
-  { src: californiaLogo, alt: "California" },
-  { src: vvBeneficiosLogo, alt: "VV Benefícios" },
-  { src: mtwelveLogo, alt: "MTwelve" },
-  { src: senseSportsLogo, alt: "Sense Sports" },
-];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
