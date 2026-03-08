@@ -3,11 +3,6 @@ import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ParticleField from "./ParticleField";
-import grifoLogo from "@/assets/clients/grifo.jpg";
-import californiaLogo from "@/assets/clients/california.jpg";
-import vvBeneficiosLogo from "@/assets/clients/vv-beneficios.png";
-import mtwelveLogo from "@/assets/clients/mtwelve.png";
-import senseSportsLogo from "@/assets/clients/sense-sports.jpg";
 
 const clients = [
   { src: grifoLogo, alt: "Grifo Engenharia" },
