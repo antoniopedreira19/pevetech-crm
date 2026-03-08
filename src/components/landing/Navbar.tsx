@@ -25,7 +25,7 @@ const Navbar = () => {
       className={`fixed top-0 w-full z-50 transition-all duration-500 ${
         scrolled
           ? "bg-background/80 backdrop-blur-xl border-b border-border/30 shadow-[0_4px_30px_rgba(0,0,0,0.3)]"
-          : "bg-transparent"
+          : "bg-transparent border-b border-transparent"
       }`}
     >
       <div className="container mx-auto flex items-center justify-between py-3 px-6">
