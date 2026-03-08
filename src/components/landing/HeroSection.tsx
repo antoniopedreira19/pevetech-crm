@@ -121,22 +121,25 @@ const HeroSection = () => {
           ))}
         </motion.div>
 
-        {/* Social Proof */}
-        <motion.div className="mt-20 w-full" initial="hidden" animate="visible" variants={fadeUp} custom={5}>
+        {/* Social Proof - Marquee */}
+        <motion.div className="mt-20 w-full overflow-hidden" initial="hidden" animate="visible" variants={fadeUp} custom={5}>
           <p className="text-[10px] font-display uppercase tracking-[0.35em] text-muted-foreground/60 mb-8">
             Operações otimizadas pela Pevetech
           </p>
-          <div className="flex items-center justify-center gap-6 md:gap-12 flex-wrap">
-            {clients.map((client, i) => (
-              <motion.div
-                key={client.alt}
-                className="w-14 h-14 md:w-[72px] md:h-[72px] rounded-full border border-border/20 bg-card/20 flex items-center justify-center hover:border-neon/30 hover:shadow-[0_0_20px_rgba(0,255,128,0.08)] transition-all duration-500 cursor-default overflow-hidden backdrop-blur-sm grayscale hover:grayscale-0 group"
-                whileHover={{ scale: 1.1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
-              </motion.div>
-            ))}
+          <div className="relative w-full">
+            {/* Fade edges */}
+            <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+            <div className="flex animate-marquee gap-12 w-max">
+              {[...clients, ...clients, ...clients, ...clients].map((client, i) => (
+                <div
+                  key={`${client.alt}-${i}`}
+                  className="w-16 h-16 md:w-[80px] md:h-[80px] rounded-full border border-border/20 bg-card/20 flex items-center justify-center shrink-0 overflow-hidden backdrop-blur-sm grayscale hover:grayscale-0 hover:border-neon/30 hover:shadow-[0_0_20px_rgba(0,255,128,0.08)] transition-all duration-500 cursor-default"
+                >
+                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
         </motion.div>
       </div>
