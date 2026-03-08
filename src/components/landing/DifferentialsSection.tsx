@@ -106,13 +106,18 @@ const DifferentialsSection = () => {
           <div className="w-full overflow-hidden relative">
             <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
             <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-            <div className="flex animate-marquee gap-8 w-max">
-              {[...clients, ...clients, ...clients, ...clients].map((client, i) => (
-                <div
-                  key={`${client.alt}-${i}`}
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-border/20 bg-card/20 flex items-center justify-center shrink-0 overflow-hidden backdrop-blur-sm grayscale hover:grayscale-0 hover:border-neon/30 hover:shadow-[0_0_15px_rgba(0,255,128,0.08)] transition-all duration-500 cursor-default"
-                >
-                  <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
+            <div className="flex animate-marquee gap-8 w-max items-center">
+              {[0, 1, 2, 3].map((group) => (
+                <div key={group} className="flex gap-8 items-center">
+                  {clients.map((client) => (
+                    <div
+                      key={`${client.alt}-${group}`}
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-border/20 bg-card/20 flex items-center justify-center shrink-0 overflow-hidden backdrop-blur-sm grayscale hover:grayscale-0 hover:border-neon/30 hover:shadow-[0_0_15px_rgba(0,255,128,0.08)] transition-all duration-500 cursor-default"
+                    >
+                      <img src={client.src} alt={client.alt} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                  <div className="w-24 md:w-40 shrink-0" />
                 </div>
               ))}
             </div>
